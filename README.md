@@ -22,11 +22,11 @@ if you have any questions.
 Actually, it's in some ways the first, at least in its very, very specific niche.
 The `embedded-graphics` environment is awesome, although fairly low-level. The goal of this
 library is to make creating simple to somewhat-complex GUIs trivially easy. There is nothing that
-does this,really, at least at the time of writing this library.
+does this, really, at least at the time of writing this library.
 
 ### What is this not?
 Kolibri is not a high-end GUI framework. It is not meant to be used for creating 
-very complicated or super nice-looking. If that's something you're 
+very complicated or super nice-looking user interfaces. If that's something you're 
 interested in, check out [the rust bindings for lvgl](https://github.com/lvgl/lv_binding_rust/) or 
 [slint (not free for commercial use)](https://slint.rs/).
 
