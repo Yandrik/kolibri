@@ -1,4 +1,6 @@
-use crate::ui::{GuiResult, Ui, Widget};
+use crate::smartstate::{Container, Smartstate};
+use crate::ui::{GuiResult, Interaction, Response, Ui, Widget};
+use core::cmp::max;
 use core::ops::Add;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
@@ -10,11 +12,22 @@ use embedded_graphics::text::{Baseline, Text, TextStyleBuilder};
 
 pub struct Button<'a> {
     label: &'a str,
+    pressed: &'a mut bool,
+    smartstate: Container<'a, Smartstate>,
 }
 
 impl<'a> Button<'a> {
-    pub fn new(label: &'a str) -> Button {
-        Button { label }
+    pub fn new(label: &'a str, pressed: &'a mut bool) -> Button<'a> {
+        Button {
+            label,
+            pressed,
+            smartstate: Container::empty(),
+        }
+    }
+
+    pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
+        self.smartstate.set(smartstate);
+        self
     }
 }
 
@@ -24,9 +37,9 @@ impl Widget for Button<'_> {
         COL: PixelColor,
         CST: TextRenderer<Color = COL> + Clone,
     >(
-        &self,
+        &mut self,
         ui: &mut Ui<DRAW, COL, CST>,
-    ) -> GuiResult<()> {
+    ) -> GuiResult<Response> {
         // get size
         let mut text = Text::new(
             self.label,
@@ -34,38 +47,76 @@ impl Widget for Button<'_> {
             ui.style().default_text_style.0.clone(),
         );
 
+        let height = ui.style().default_widget_height;
         let size = text.bounding_box();
-        let spacing = ui.style().spacing.item_spacing;
         let padding = ui.style().spacing.button_padding;
         let border = ui.style().border_width;
 
         // allocate space
-        let space = ui.allocate_space(Size::new(
-            size.size.width + 2 * padding.width + 2 * border + spacing.width,
-            size.size.height + 2 * padding.height + 2 * border,
+        let iresponse = ui.allocate_space(Size::new(
+            size.size.width + 2 * padding.width + 2 * border,
+            max(size.size.height + 2 * padding.height + 2 * border, height),
         ))?;
 
         // move text
-        text.translate_mut(space.top_left.add(Point::new(
+        text.translate_mut(iresponse.area.top_left.add(Point::new(
             (padding.width + border) as i32,
             (padding.height + border) as i32,
         )));
 
         text.text_style.baseline = Baseline::Top;
 
-        // styles
-        let rect_style = PrimitiveStyleBuilder::new()
-            .stroke_color(ui.style().border_color)
-            .stroke_width(ui.style().border_width)
-            .fill_color(ui.style().background_color)
-            .build();
+        // check for click
+        let click = *self.pressed && matches!(iresponse.interaction, Interaction::Release(_));
 
-        // draw
+        // styles and smartstate
+        let prevstate = self.smartstate.clone_inner();
 
-        ui.draw_raw(&Rectangle::new(space.top_left, space.size).into_styled(rect_style))
+        let rect_style = match (iresponse.interaction, *self.pressed) {
+            (Interaction::None, _) => {
+                *self.pressed = false;
+                self.smartstate.modify(|st| *st = Smartstate::state(1));
+
+                PrimitiveStyleBuilder::new()
+                    .stroke_color(ui.style().border_color)
+                    .stroke_width(ui.style().border_width)
+                    .fill_color(ui.style().item_background_color)
+                    .build()
+            }
+            (Interaction::Hover(_) | Interaction::Drag(_) | Interaction::Release(_), false) => {
+                self.smartstate.modify(|st| *st = Smartstate::state(2));
+                PrimitiveStyleBuilder::new()
+                    .stroke_color(ui.style().highlight_border_color)
+                    .stroke_width(ui.style().highlight_border_width)
+                    .fill_color(ui.style().highlight_item_background_color)
+                    .build()
+            }
+
+            (inter @ _, _) => {
+                match inter {
+                    Interaction::Click(_) => *self.pressed = true,
+                    Interaction::Release(_) => *self.pressed = false,
+                    _ => {}
+                }
+                self.smartstate.modify(|st| *st = Smartstate::state(3));
+
+                PrimitiveStyleBuilder::new()
+                    .stroke_color(ui.style().highlight_border_color)
+                    .stroke_width(ui.style().highlight_border_width)
+                    .fill_color(ui.style().primary_color)
+                    .build()
+            }
+        };
+
+        if !self.smartstate.eq_option(&prevstate) {
+            ui.draw_raw(
+                &Rectangle::new(iresponse.area.top_left, iresponse.area.size)
+                    .into_styled(rect_style),
+            )
             .ok();
-        ui.draw_raw(&text).ok();
+            ui.draw_raw(&text).ok();
+        }
 
-        Ok(())
+        Ok(Response::new(iresponse).set_clicked(click))
     }
 }
