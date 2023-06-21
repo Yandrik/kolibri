@@ -1,5 +1,7 @@
 use crate::spacer::Spacer;
 use crate::style::Style;
+use core::cmp::max;
+use core::ops::AddAssign;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::{Point, Size};
@@ -11,8 +13,6 @@ use embedded_layout::layout::linear::{spacing, Horizontal, LinearLayout, Vertica
 use embedded_layout::prelude::Chain;
 use embedded_layout::view_group::ViewGroup;
 use embedded_layout::View;
-use std::cmp::max;
-use std::ops::AddAssign;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GuiError {

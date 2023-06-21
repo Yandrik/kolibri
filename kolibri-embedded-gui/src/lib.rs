@@ -1,3 +1,5 @@
+#![no_std]
+
 pub mod button;
 pub mod spacer;
 pub mod style;
