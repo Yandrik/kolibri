@@ -65,13 +65,22 @@ impl Widget for Label<'_> {
         // draw
 
         if redraw {
+            let painter = ui.painter();
+            let clear = painter.alloc_framebuf(&space.area);
             // clear background if necessary
-            if !ui.cleared() {
-                ui.clear_area(space.area)?;
+            if !painter.cleared() || clear {
+                painter
+                    .clear_area(space.area)
+                    .map_err(|_| GuiError::DrawError(Some("Couldn't clear text background")))?;
             }
 
-            ui.draw_raw(&mut text)
+            painter
+                .draw(&mut text)
                 .map_err(|_| GuiError::DrawError(Some("Couldn't draw text")))?;
+
+            painter
+                .finalize()
+                .map_err(|_| GuiError::DrawError(Some("Couldn't finalize draw")))?;
         }
 
         Ok(Response::new(space))

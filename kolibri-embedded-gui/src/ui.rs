@@ -1,5 +1,8 @@
+use crate::framebuf::WidgetFramebuf;
 use crate::spacer::Spacer;
 use crate::style::Style;
+use alloc::rc::Rc;
+use core::cell::{RefCell, RefMut};
 use core::cmp::max;
 use core::fmt::Debug;
 use core::ops::{Add, AddAssign, Sub};
@@ -7,12 +10,13 @@ use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::image::Image;
 use embedded_graphics::pixelcolor::PixelColor;
-use embedded_graphics::prelude::{Point, Size};
+use embedded_graphics::prelude::{Dimensions, Point, Primitive, Size};
 use embedded_graphics::primitives::{
     PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, StyledDrawable,
 };
 use embedded_graphics::text::renderer::TextRenderer;
 use embedded_graphics::Drawable;
+use embedded_graphics_framebuf::FrameBuf;
 use embedded_iconoir::prelude::IconoirNewIcon;
 use embedded_iconoir::{make_icon_category, Icon};
 
@@ -219,23 +223,120 @@ impl Interaction {
     }
 }
 
+pub struct Painter<'a, COL, DRAW, DefaultCharstyle>
+where
+    COL: PixelColor,
+    DRAW: DrawTarget<Color = COL>,
+    DefaultCharstyle: TextRenderer<Color = COL>,
+{
+    drawable: &'a mut DRAW,
+
+    full_bounds: Rectangle,
+
+    cleared: bool,
+
+    /// Framebuffer for drawing widgets into (if available)
+    framebuf: RefCell<Option<&'a mut [COL]>>,
+
+    cur_fb: Option<WidgetFramebuf<'a, COL>>,
+
+    style: Style<COL, DefaultCharstyle>,
+}
+
+impl<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>, CST: TextRenderer<Color = COL>>
+    Painter<'a, COL, DRAW, CST>
+{
+    pub fn new(drawable: &'a mut DRAW, style: Style<COL, CST>, bounds: Rectangle) -> Self {
+        Self {
+            drawable,
+            framebuf: RefCell::new(None),
+            cur_fb: None,
+            style,
+            full_bounds: bounds,
+            cleared: false,
+        }
+    }
+
+    pub fn with_framebuf(mut self, framebuf: &'a mut [COL]) -> Self {
+        self.framebuf = RefCell::from(Some(framebuf));
+        self
+    }
+
+    /// Start drawing a new widget, creating a new framebuffer if possible.
+    ///
+    /// Returns true if a framebuffer was created, and false otherwise.
+    /// If `true` is returned, the widget should draw into the framebuffer
+    /// (and therefore clear its own background).
+    pub fn alloc_framebuf(&'a mut self, area: &Rectangle) -> bool {
+        if self.framebuf.borrow().is_some() {
+            self.cur_fb = Some(WidgetFramebuf::new(
+                &mut *self.framebuf.borrow_mut().as_mut().unwrap(),
+                area.size,
+                area.top_left,
+            ));
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn draw(&mut self, drawable: &impl Drawable<Color = COL>) -> GuiResult<()> {
+        if let Some(fb) = &mut self.cur_fb {
+            drawable.draw(fb).ok();
+        } else {
+            drawable
+                .draw(self.drawable)
+                .map_err(|_| GuiError::DrawError(Some("Painter couldn't draw to drawable")))?;
+        }
+        Ok(())
+    }
+
+    pub fn clear(&mut self) -> GuiResult<()> {
+        self.cleared = true;
+        self.clear_area(self.full_bounds)
+    }
+
+    pub fn cleared(&self) -> bool {
+        self.cleared
+    }
+
+    pub fn clear_area(&mut self, area: Rectangle) -> GuiResult<()> {
+        let styled = area.into_styled(PrimitiveStyle::with_fill(self.style.background_color));
+        self.draw(&styled)
+    }
+
+    pub fn finalize(&mut self) -> Result<(), DRAW::Error> {
+        if let Some(buf) = self.cur_fb.take() {
+            buf.draw(self.drawable)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn style(&self) -> &Style<COL, CST> {
+        &self.style
+    }
+
+    pub fn style_mut(&mut self) -> &mut Style<COL, CST> {
+        &mut self.style
+    }
+}
+
 pub struct Ui<'a, DRAW, COL, DefaultCharstyle>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
     DefaultCharstyle: TextRenderer<Color = COL> + Clone,
 {
-    bounds: Rectangle,
-    drawable: &'a mut DRAW,
-    style: Style<COL, DefaultCharstyle>,
     next_auto_id_source: u16,
     placer: Placer,
+    painter: Painter<'a, COL, DRAW, DefaultCharstyle>,
     interact: Interaction,
     /// Whether the UI was background-cleared this frame
     cleared: bool,
 }
 
-impl<COL, DefaultCharstyle, DRAW> Ui<'_, DRAW, COL, DefaultCharstyle>
+impl<'a, COL, DefaultCharstyle, DRAW> Ui<'a, DRAW, COL, DefaultCharstyle>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
@@ -247,7 +348,7 @@ where
         style: Style<COL, DefaultCharstyle>,
     ) -> Ui<DRAW, COL, DefaultCharstyle> {
         // set bounds to internal bounds (apply padding)
-        let bounds = Rectangle::new(
+        let padded_bounds = Rectangle::new(
             bounds.top_left.add(Point::new(
                 style.spacing.window_border_padding.height as i32,
                 style.spacing.window_border_padding.width as i32,
@@ -263,16 +364,14 @@ where
             col: 0,
             pos: Point::zero(),
             col_height: 0,
-            bounds: bounds.size,
+            bounds: padded_bounds.size,
             wrap: true,
         };
 
         Ui {
-            bounds,
-            drawable,
-            style,
             next_auto_id_source: 0,
             placer,
+            painter: Painter::new(drawable, style, bounds),
             interact: Interaction::None,
             cleared: false,
         }
@@ -286,28 +385,21 @@ where
         Ui::new(drawable, bounds, style)
     }
 
+    /// Add a Framebuffer Array to the UI.
+    ///
+    /// This array is used to draw widgets into, if it's available and large enough,
+    /// and the widget supports it. (Widgets can get a framebuffer using `ui.draw_framebuf()`)
+    /// Generally, it should have as many spaces as the biggest widget you want to draw.
+    /// All widgets that are too small to fit into the array will be drawn directly into the drawable.
+    ///
+    ///
+    pub fn with_framebuf(&mut self, framebuf: &'a mut [COL]) -> &mut Self {
+        self.painter = self.painter.with_framebuf(framebuf);
+        self
+    }
+
     pub fn clear_background(&mut self) -> GuiResult<()> {
-        self.cleared = true;
-
-        // clear background
-        let real_bg = Rectangle::new(
-            self.bounds.top_left.sub(Point::new(
-                self.style.spacing.window_border_padding.width as i32,
-                self.style.spacing.window_border_padding.height as i32,
-            )),
-            self.bounds
-                .size
-                .saturating_add(self.style.spacing.window_border_padding * 2),
-        );
-
-        real_bg
-            .draw_styled(
-                &PrimitiveStyleBuilder::new()
-                    .fill_color(self.style.background_color)
-                    .build(),
-                self.drawable,
-            )
-            .map_err(|_| GuiError::DrawError(Some("Couldn't clear GUI Background")))
+        self.painter.clear()
     }
 
     /// Return whether the UI was background-cleared this frame
@@ -351,7 +443,7 @@ where
     }
 
     pub fn style(&self) -> &Style<COL, DefaultCharstyle> {
-        &self.style
+        &self.painter.style()
     }
 
     pub fn new_row(&mut self, height: u32) {
@@ -364,19 +456,8 @@ where
         self.placer.col_height = height;
     }
 
-    pub fn draw_raw<OUT>(
-        &mut self,
-        to_draw: &impl Drawable<Color = COL, Output = OUT>,
-    ) -> Result<OUT, DRAW::Error> {
-        to_draw.draw(self.drawable)
-    }
-
-    pub fn clear_area(&mut self, area: Rectangle) -> GuiResult<()> {
-        area.draw_styled(
-            &PrimitiveStyle::with_fill(self.style.background_color),
-            self.drawable,
-        )
-        .map_err(|_| GuiError::DrawError(Some("Couldn't clear area")))
+    pub fn painter(&mut self) -> &mut Painter<'a, COL, DRAW, DefaultCharstyle> {
+        &mut self.painter
     }
 
     pub fn space_available(&self) -> Size {
@@ -404,7 +485,7 @@ where
 
     pub fn allocate_space(&mut self, desired_size: Size) -> GuiResult<InternalResponse> {
         let rect = self.placer.next(desired_size).map(|mut rect| {
-            rect.top_left.add_assign(self.bounds.top_left);
+            rect.top_left.add_assign(self.placer.pos);
             rect
         })?;
         let inter = self.check_interact(rect);
@@ -417,7 +498,7 @@ where
 
     pub fn allocate_space_no_wrap(&mut self, desired_size: Size) -> GuiResult<InternalResponse> {
         let area = self.placer.next_no_wrap(desired_size).map(|mut rect| {
-            rect.top_left.add_assign(self.bounds.top_left);
+            rect.top_left.add_assign(self.placer.pos);
             rect
         })?;
 

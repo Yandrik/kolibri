@@ -30,7 +30,7 @@ impl Checkbox<'_> {
         CST: TextRenderer<Color = COL> + Clone,
     >(
         &mut self,
-        ui: &mut Ui<DRAW, COL, CST>,
+        painter: &mut Ui<DRAW, COL>,
         icon: impl ImageDrawable<Color = COL>,
         area: &Rectangle,
         center_offset: Point,

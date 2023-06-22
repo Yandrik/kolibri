@@ -1,12 +1,13 @@
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiResult, Interaction, Response, Ui, Widget};
 use core::cmp::max;
+use core::ffi::c_short;
 use core::ops::Add;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
+use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle, StyledDrawable};
 use embedded_graphics::text::renderer::TextRenderer;
 use embedded_graphics::text::{Baseline, Text, TextStyleBuilder};
 
@@ -109,12 +110,18 @@ impl Widget for Button<'_> {
         };
 
         if !self.smartstate.eq_option(&prevstate) {
-            ui.draw_raw(
-                &Rectangle::new(iresponse.area.top_left, iresponse.area.size)
-                    .into_styled(rect_style),
-            )
-            .ok();
-            ui.draw_raw(&text).ok();
+            let painter = ui.painter();
+            painter.alloc_framebuf(&iresponse.area);
+
+            painter
+                .draw(
+                    &Rectangle::new(iresponse.area.top_left, iresponse.area.size)
+                        .into_styled(rect_style),
+                )
+                .ok();
+            painter.draw(&text).ok();
+
+            painter.finalize();
         }
 
         Ok(Response::new(iresponse).set_clicked(click))

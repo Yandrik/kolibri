@@ -1,15 +1,19 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
+
+extern crate alloc;
 
 pub mod button;
-pub mod checkbox;
+// pub mod checkbox;
 // mod icon;
 // pub mod icon;
-pub mod icon;
+// pub mod icon;
 pub mod label;
 pub mod smartstate;
 pub mod spacer;
 pub mod style;
 // mod temp;
+// mod framebuf;
+pub mod framebuf;
 pub mod ui;
 
 pub mod prelude {

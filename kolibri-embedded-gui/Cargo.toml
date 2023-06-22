@@ -9,6 +9,7 @@ edition = "2021"
 
 [dependencies]
 embedded-graphics = "^0.8"
+embedded-graphics-framebuf = "0.4.0"
 embedded-iconoir = { version = "0.2.1", features = ["12px", "18px", "24px", "32px"] }
 heapless = "^0.7"
 
