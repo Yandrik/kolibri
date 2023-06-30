@@ -201,33 +201,14 @@ dependencies = [
 
 [[package]]
 name = "embedded-iconoir"
-version = "0.2.0"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b5f8052b93fe3693ea3800724d57405533af3b066498b8c141461c525d196e6"
 dependencies = [
  "bit_field",
  "embedded-graphics",
  "paste",
  "static_assertions",
-]
-
-[[package]]
-name = "embedded-layout"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d3dc955af9d9011835bbb92ef7de625e493338e3535a51f754bf1ee846282bb"
-dependencies = [
- "embedded-graphics",
- "embedded-layout-macros",
-]
-
-[[package]]
-name = "embedded-layout-macros"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e8e14b0fd4603445537cee01d543cff7ad00bad251d9df29dc46497e3ebbee4"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.18",
 ]
 
 [[package]]
@@ -315,7 +296,6 @@ dependencies = [
  "embedded-graphics",
  "embedded-graphics-simulator",
  "embedded-iconoir",
- "embedded-layout",
  "heapless",
 ]
 
@@ -446,7 +426,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn",
 ]
 
 [[package]]
@@ -476,7 +456,7 @@ dependencies = [
  "proc-macro-error-attr",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn",
  "version_check",
 ]
 
@@ -607,17 +587,6 @@ name = "syn"
 version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-ident",
-]
-
-[[package]]
-name = "syn"
-version = "2.0.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32d41677bcbe24c20c52e7c70b0d8db04134c5d1066bf98662e2871ad200ea3e"
 dependencies = [
  "proc-macro2",
  "quote",

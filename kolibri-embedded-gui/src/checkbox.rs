@@ -1,3 +1,4 @@
+use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiError, GuiResult, Interaction, Response, Ui, Widget};
 use core::cmp::{max, min};
 use core::ops::{Add, Sub};
@@ -15,15 +16,24 @@ use embedded_iconoir::{size12px, size18px, size24px, size32px, Icon};
 
 pub struct Checkbox<'a> {
     checked: &'a mut bool,
+    smartstate: Container<'a, Smartstate>,
 }
 
-impl Checkbox<'_> {
+impl<'a> Checkbox<'a> {
     pub fn new(checked: &mut bool) -> Checkbox {
-        Checkbox { checked }
+        Checkbox {
+            checked,
+            smartstate: Container::empty(),
+        }
+    }
+
+    pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
+        self.smartstate.set(smartstate);
+        self
     }
 }
 
-impl Checkbox<'_> {
+impl<'a> Checkbox<'a> {
     fn draw_icon<
         DRAW: DrawTarget<Color = COL>,
         COL: PixelColor,
@@ -42,7 +52,7 @@ impl Checkbox<'_> {
                     .sub(center_offset),
             ),
         );
-        ui.draw_raw(&img)
+        ui.draw(&img)
             .map_err(|_| GuiError::DrawError(Some("Couldn't draw Checkbox")))
     }
 }
@@ -77,71 +87,89 @@ impl<'a> Widget for Checkbox<'a> {
 
         // styles
 
+        // smartstate
+        let mut prevstate = self.smartstate.clone_inner();
+
         let style = match iresponse.interaction {
             Interaction::Click(_) | Interaction::Drag(_) | Interaction::Release(_) => {
+                self.smartstate.modify(|st| *st = Smartstate::state(1));
                 PrimitiveStyleBuilder::new()
                     .fill_color(ui.style().primary_color)
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
             }
-            Interaction::Hover(_) => PrimitiveStyleBuilder::new()
-                .fill_color(ui.style().highlight_item_background_color)
-                .stroke_color(ui.style().highlight_border_color)
-                .stroke_width(ui.style().highlight_border_width),
-            _ => PrimitiveStyleBuilder::new()
-                .fill_color(ui.style().item_background_color)
-                .stroke_color(ui.style().border_color)
-                .stroke_width(ui.style().border_width),
+            Interaction::Hover(_) => {
+                self.smartstate.modify(|st| *st = Smartstate::state(2));
+                PrimitiveStyleBuilder::new()
+                    .fill_color(ui.style().highlight_item_background_color)
+                    .stroke_color(ui.style().highlight_border_color)
+                    .stroke_width(ui.style().highlight_border_width)
+            }
+            _ => {
+                self.smartstate.modify(|st| *st = Smartstate::state(3));
+                PrimitiveStyleBuilder::new()
+                    .fill_color(ui.style().item_background_color)
+                    .stroke_color(ui.style().border_color)
+                    .stroke_width(ui.style().border_width)
+            }
         };
 
-        // clear background if needed
+        let redraw = !self.smartstate.eq_option(&prevstate) || changed;
 
-        if !ui.cleared() && size - padding.height < 12 {
-            ui.clear_area(iresponse.area)?;
-        }
+        if redraw {
+            ui.start_drawing(&iresponse.area);
 
-        // draw
+            // clear background if needed
 
-        let rect = Rectangle::new(
-            iresponse
-                .area
-                .top_left
-                .add(Point::new(padding.width as i32, padding.height as i32)),
-            iresponse.area.size.saturating_sub(padding * 2),
-        );
+            if !ui.cleared() && size - padding.height < 12 {
+                ui.clear_area(iresponse.area)?;
+            }
 
-        ui.draw_raw(&rect.into_styled(style.build()))
-            .map_err(|_| GuiError::DrawError(Some("Couldn't draw Checkbox")))?;
+            // draw
 
-        if *self.checked {
-            match size - padding.width {
-                0..=18 => {
-                    (self.draw_icon(
+            let rect = Rectangle::new(
+                iresponse
+                    .area
+                    .top_left
+                    .add(Point::new(padding.width as i32, padding.height as i32)),
+                iresponse.area.size.saturating_sub(padding * 2),
+            );
+
+            ui.draw(&rect.into_styled(style.build()))
+                .map_err(|_| GuiError::DrawError(Some("Couldn't draw Checkbox")))?;
+
+            if *self.checked {
+                match size - padding.width {
+                    0..=18 => {
+                        (self.draw_icon(
+                            ui,
+                            size12px::actions::Check::new(ui.style().text_color),
+                            &iresponse.area,
+                            Point::new(6, 6),
+                        ))
+                    }
+                    19..=23 => self.draw_icon(
                         ui,
-                        size12px::actions::Check::new(ui.style().text_color),
+                        size18px::actions::Check::new(ui.style().text_color),
                         &iresponse.area,
-                        Point::new(6, 6),
-                    ))
-                }
-                19..=23 => self.draw_icon(
-                    ui,
-                    size18px::actions::Check::new(ui.style().text_color),
-                    &iresponse.area,
-                    Point::new(9, 9),
-                ),
-                24..=32 => self.draw_icon(
-                    ui,
-                    size24px::actions::Check::new(ui.style().text_color),
-                    &iresponse.area,
-                    Point::new(12, 12),
-                ),
-                _ => self.draw_icon(
-                    ui,
-                    size32px::actions::Check::new(ui.style().text_color),
-                    &iresponse.area,
-                    Point::new(16, 16),
-                ),
-            }?;
+                        Point::new(9, 9),
+                    ),
+                    24..=32 => self.draw_icon(
+                        ui,
+                        size24px::actions::Check::new(ui.style().text_color),
+                        &iresponse.area,
+                        Point::new(12, 12),
+                    ),
+                    _ => self.draw_icon(
+                        ui,
+                        size32px::actions::Check::new(ui.style().text_color),
+                        &iresponse.area,
+                        Point::new(16, 16),
+                    ),
+                }?;
+            }
+
+            ui.finalize()?;
         }
 
         Ok(Response::new(iresponse).set_changed(changed))

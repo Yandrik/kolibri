@@ -28,7 +28,7 @@ impl<'a> Label<'a> {
     }
 }
 
-impl Widget for Label<'_> {
+impl<'a> Widget for Label<'a> {
     fn draw<
         DRAW: DrawTarget<Color = COL>,
         COL: PixelColor,
@@ -48,13 +48,13 @@ impl Widget for Label<'_> {
 
         // allocate space
 
-        let space = ui.allocate_space(Size::new(size.size.width, size.size.height))?;
+        let iresponse = ui.allocate_space(Size::new(size.size.width, size.size.height))?;
 
         // move text (center vertically)
 
-        text.translate_mut(space.area.top_left.add(Point::new(
+        text.translate_mut(iresponse.area.top_left.add(Point::new(
             0,
-            (space.area.size.height - size.size.height) as i32 / 2,
+            (iresponse.area.size.height - size.size.height) as i32 / 2,
         )));
         text.text_style.baseline = Baseline::Top;
 
@@ -65,15 +65,18 @@ impl Widget for Label<'_> {
         // draw
 
         if redraw {
+            ui.start_drawing(&iresponse.area);
             // clear background if necessary
             if !ui.cleared() {
-                ui.clear_area(space.area)?;
+                ui.clear_area(iresponse.area)?;
             }
 
-            ui.draw_raw(&mut text)
+            ui.draw(&text)
                 .map_err(|_| GuiError::DrawError(Some("Couldn't draw text")))?;
+
+            ui.finalize()?;
         }
 
-        Ok(Response::new(space))
+        Ok(Response::new(iresponse))
     }
 }

@@ -109,12 +109,16 @@ impl Widget for Button<'_> {
         };
 
         if !self.smartstate.eq_option(&prevstate) {
-            ui.draw_raw(
+            ui.start_drawing(&iresponse.area);
+
+            ui.draw(
                 &Rectangle::new(iresponse.area.top_left, iresponse.area.size)
                     .into_styled(rect_style),
             )
             .ok();
-            ui.draw_raw(&text).ok();
+            ui.draw(&text).ok();
+
+            ui.finalize()?;
         }
 
         Ok(Response::new(iresponse).set_clicked(click))

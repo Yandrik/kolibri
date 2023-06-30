@@ -1,18 +1,20 @@
+use crate::framebuf::WidgetFramebuf;
 use crate::spacer::Spacer;
 use crate::style::Style;
-use core::cmp::max;
+use core::cell::UnsafeCell;
+use core::cmp::{max, min};
 use core::fmt::Debug;
 use core::ops::{Add, AddAssign, Sub};
 use embedded_graphics::draw_target::DrawTarget;
-use embedded_graphics::geometry::OriginDimensions;
+use embedded_graphics::geometry::{Dimensions, OriginDimensions};
 use embedded_graphics::image::Image;
 use embedded_graphics::pixelcolor::PixelColor;
-use embedded_graphics::prelude::{Point, Size};
+use embedded_graphics::prelude::{PixelIteratorExt, Point, Primitive, Size};
 use embedded_graphics::primitives::{
     PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, StyledDrawable,
 };
 use embedded_graphics::text::renderer::TextRenderer;
-use embedded_graphics::Drawable;
+use embedded_graphics::{Drawable, Pixel};
 use embedded_iconoir::prelude::IconoirNewIcon;
 use embedded_iconoir::{make_icon_category, Icon};
 
@@ -29,6 +31,12 @@ pub enum GuiError {
     // If you have a better idea, a PR is much appreciated.
     // (maybe a Box<dyn Error> with alloc feature gate? Or a 'String' (heapless / alloc) and format!()?)
     DrawError(Option<&'static str>),
+}
+
+impl GuiError {
+    pub fn draw_error(msg: &'static str) -> Self {
+        GuiError::DrawError(Some(msg))
+    }
 }
 
 pub type GuiResult<T> = Result<T, GuiError>;
@@ -185,9 +193,104 @@ impl Placer {
         self.col_height
     }
 
+    fn expand_col_height(&mut self, height: u32) {
+        self.col_height = max(self.col_height, height);
+    }
+
     /// Check whether a size is in bounds of the widget (<= widget_size)
     fn check_bounds(&self, pos: Size) -> bool {
         pos.width as u32 <= self.bounds.width && pos.height <= self.bounds.height
+    }
+}
+
+struct Painter<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> {
+    target: &'a mut DRAW,
+    buffer_raw: Option<UnsafeCell<&'a mut [COL]>>,
+    framebuf: Option<WidgetFramebuf<'a, COL>>,
+}
+
+impl<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> Painter<'a, COL, DRAW> {
+    fn new(target: &'a mut DRAW) -> Self {
+        Self {
+            target,
+            buffer_raw: None,
+            framebuf: None,
+        }
+    }
+
+    fn set_buffer(&mut self, buffer: &'a mut [COL]) {
+        self.buffer_raw = Some(UnsafeCell::new(buffer));
+    }
+
+    fn start_drawing(&mut self, area: &Rectangle) {
+        if let Some(_) = self.framebuf {
+            panic!("Framebuffer is already in use!");
+        }
+
+        if let Some(buf) = &mut self.buffer_raw {
+            let buf = WidgetFramebuf::try_new(unsafe { *buf.get() }, area.size, area.top_left);
+            if let Some(frbuf) = buf {
+                self.framebuf = Some(frbuf);
+            }
+        }
+    }
+
+    /// Clear the buffer, if it's available.
+    ///
+    /// ## Returns
+    ///
+    /// `true` if the buffer was cleared, `false` if there's no buffer to clear.
+    fn clear_buffer(&mut self, color: COL) -> bool {
+        if let Some(framebuf) = &mut self.framebuf {
+            framebuf.clear(color)
+                .ok()  /* cannot fail */;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn finalize(&mut self) -> GuiResult<()> {
+        if let Some(buf) = &mut self.framebuf {
+            buf.draw(self.target)
+                .map_err(|_| GuiError::draw_error("Failed to draw framebuf"))?;
+            self.framebuf = None;
+        }
+        Ok(())
+    }
+
+    fn draw(&mut self, item: &impl Drawable<Color = COL>) -> GuiResult<()> {
+        if let Some(buffer) = &mut self.framebuf {
+            item.draw(buffer)
+                .ok() /* cannot fail */;
+        } else {
+            item.draw(self.target)
+                .map_err(|_| GuiError::draw_error("Failed to draw item"))?;
+        }
+        Ok(())
+    }
+}
+
+// Basic Implementations for DrawTarget and Dimensions to allow Painter to be used as its inner DrawTarget
+impl<COL: PixelColor, DRAW: DrawTarget<Color = COL, Error = ERR>, ERR> Dimensions
+    for Painter<'_, COL, DRAW>
+{
+    fn bounding_box(&self) -> Rectangle {
+        self.target.bounding_box()
+    }
+}
+
+impl<COL: PixelColor, DRAW: DrawTarget<Color = COL, Error = ERR>, ERR> DrawTarget
+    for Painter<'_, COL, DRAW>
+{
+    type Color = COL;
+    type Error = ERR;
+
+    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = Pixel<Self::Color>>,
+    {
+        self.target.draw_iter(pixels)
     }
 }
 
@@ -226,7 +329,7 @@ where
     DefaultCharstyle: TextRenderer<Color = COL> + Clone,
 {
     bounds: Rectangle,
-    drawable: &'a mut DRAW,
+    painter: Painter<'a, COL, DRAW>,
     style: Style<COL, DefaultCharstyle>,
     next_auto_id_source: u16,
     placer: Placer,
@@ -235,17 +338,17 @@ where
     cleared: bool,
 }
 
-impl<COL, DefaultCharstyle, DRAW> Ui<'_, DRAW, COL, DefaultCharstyle>
+impl<'a, COL, DefaultCharstyle, DRAW> Ui<'a, DRAW, COL, DefaultCharstyle>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
     DefaultCharstyle: TextRenderer<Color = COL> + Clone,
 {
     pub fn new(
-        drawable: &mut DRAW,
+        drawable: &'a mut DRAW,
         bounds: Rectangle,
         style: Style<COL, DefaultCharstyle>,
-    ) -> Ui<DRAW, COL, DefaultCharstyle> {
+    ) -> Self {
         // set bounds to internal bounds (apply padding)
         let bounds = Rectangle::new(
             bounds.top_left.add(Point::new(
@@ -267,9 +370,9 @@ where
             wrap: true,
         };
 
-        Ui {
+        Self {
             bounds,
-            drawable,
+            painter: Painter::new(drawable),
             style,
             next_auto_id_source: 0,
             placer,
@@ -278,45 +381,24 @@ where
         }
     }
 
-    pub fn new_fullscreen(
-        drawable: &mut DRAW,
-        style: Style<COL, DefaultCharstyle>,
-    ) -> Ui<DRAW, COL, DefaultCharstyle> {
+    pub fn new_fullscreen(drawable: &'a mut DRAW, style: Style<COL, DefaultCharstyle>) -> Self {
         let bounds = drawable.bounding_box();
         Ui::new(drawable, bounds, style)
     }
 
-    pub fn clear_background(&mut self) -> GuiResult<()> {
-        self.cleared = true;
-
-        // clear background
-        let real_bg = Rectangle::new(
-            self.bounds.top_left.sub(Point::new(
-                self.style.spacing.window_border_padding.width as i32,
-                self.style.spacing.window_border_padding.height as i32,
-            )),
-            self.bounds
-                .size
-                .saturating_add(self.style.spacing.window_border_padding * 2),
-        );
-
-        real_bg
-            .draw_styled(
-                &PrimitiveStyleBuilder::new()
-                    .fill_color(self.style.background_color)
-                    .build(),
-                self.drawable,
-            )
-            .map_err(|_| GuiError::DrawError(Some("Couldn't clear GUI Background")))
-    }
-
-    /// Return whether the UI was background-cleared this frame
-    pub fn cleared(&self) -> bool {
-        self.cleared
-    }
-
     pub fn interact(&mut self, interaction: Interaction) {
         self.interact = interaction;
+    }
+
+    pub fn add_and_clear_col_remainder(&mut self, widget: impl Widget, clear: bool) -> Response {
+        let resp = self.add_raw(widget).expect("Couldn't add widget to UI");
+        if clear {
+            self.clear_col_to_end().ok();
+        }
+
+        self.new_row();
+
+        resp
     }
 
     pub fn add(&mut self, widget: impl Widget) -> Response {
@@ -324,10 +406,7 @@ where
         let resp = self.add_raw(widget).expect("Couldn't add widget to UI");
 
         // create new row
-        self.placer
-            .new_row(self.style().spacing.item_spacing.height);
-
-        self.placer.new_row(self.style().default_widget_height);
+        self.new_row();
 
         resp
     }
@@ -335,7 +414,7 @@ where
     /// Add a widget horizontally to the layout to the current row
     pub fn add_horizontal(&mut self, height: Option<u32>, mut widget: impl Widget) -> Response {
         // set row height to the given
-        self.expand_row_height(height.unwrap_or(0));
+        self.expand_col_height(height.unwrap_or(0));
 
         let resp = self.add_raw(widget).expect("Couldn't add widget to UI");
         // ignore space alignment errors (those are "fine". If wrapping is enabled,
@@ -354,30 +433,30 @@ where
         &self.style
     }
 
-    pub fn new_row(&mut self, height: u32) {
+    pub fn new_row(&mut self) {
+        self.new_row_raw(self.style().spacing.item_spacing.height);
+
+        self.new_row_raw(self.style().default_widget_height);
+    }
+
+    pub fn new_row_raw(&mut self, height: u32) {
         self.placer.new_row(height);
     }
 
     /// Increase the height of the current row to the given height, if it is
     /// larger than the current height
-    pub fn expand_row_height(&mut self, height: u32) {
-        self.placer.col_height = height;
+    pub fn expand_col_height(&mut self, height: u32) {
+        self.placer.expand_col_height(height);
     }
 
     pub fn draw_raw<OUT>(
         &mut self,
         to_draw: &impl Drawable<Color = COL, Output = OUT>,
     ) -> Result<OUT, DRAW::Error> {
-        to_draw.draw(self.drawable)
+        to_draw.draw(self.painter.target)
     }
 
-    pub fn clear_area(&mut self, area: Rectangle) -> GuiResult<()> {
-        area.draw_styled(
-            &PrimitiveStyle::with_fill(self.style.background_color),
-            self.drawable,
-        )
-        .map_err(|_| GuiError::DrawError(Some("Couldn't clear area")))
-    }
+    // painter functions
 
     pub fn space_available(&self) -> Size {
         self.placer.space_available()
@@ -421,9 +500,130 @@ where
             rect
         })?;
 
+        let inter = self.check_interact(area);
+
         Ok(InternalResponse {
             area,
-            interaction: Interaction::None,
+            interaction: inter,
         })
     }
 }
+
+// Clearing impls
+impl<'a, COL, DefaultCharstyle, DRAW> Ui<'a, DRAW, COL, DefaultCharstyle>
+where
+    DRAW: DrawTarget<Color = COL>,
+    COL: PixelColor,
+    DefaultCharstyle: TextRenderer<Color = COL> + Clone,
+{
+    /// Return whether the UI was background-cleared this frame
+    pub fn cleared(&self) -> bool {
+        self.cleared
+    }
+
+    pub fn clear_area(&mut self, area: Rectangle) -> GuiResult<()> {
+        self.draw(&area.into_styled(PrimitiveStyle::with_fill(self.style.background_color)))
+            .map_err(|_| GuiError::DrawError(Some("Couldn't clear area")))
+    }
+
+    /// Clear the current row with the background color
+    pub fn clear_col(&mut self) -> GuiResult<()> {
+        let col_height = self.placer.col_height;
+        let col_rect = Rectangle::new(
+            Point::new(0, col_height as i32),
+            Size::new(self.bounds.size.width, col_height),
+        );
+        self.clear_area(col_rect)
+    }
+
+    pub fn clear_col_to_end(&mut self) -> GuiResult<()> {
+        let col_height = self.placer.col_height;
+        let col_rect = Rectangle::new(
+            self.placer.pos,
+            Size::new(
+                self.bounds.size.width - self.placer.pos.x.max(0) as u32,
+                col_height,
+            ),
+        );
+        self.clear_area(col_rect)
+    }
+
+    pub fn clear_background(&mut self) -> GuiResult<()> {
+        self.cleared = true;
+
+        // clear background
+        let real_bg = Rectangle::new(
+            self.bounds.top_left.sub(Point::new(
+                self.style.spacing.window_border_padding.width as i32,
+                self.style.spacing.window_border_padding.height as i32,
+            )),
+            self.bounds
+                .size
+                .saturating_add(self.style.spacing.window_border_padding * 2),
+        );
+
+        real_bg
+            .draw_styled(
+                &PrimitiveStyleBuilder::new()
+                    .fill_color(self.style.background_color)
+                    .build(),
+                self.painter.target,
+            )
+            .map_err(|_| GuiError::DrawError(Some("Couldn't clear GUI Background")))
+    }
+}
+
+// Drawing Impl
+impl<'a, COL, DefaultCharstyle, DRAW> Ui<'a, DRAW, COL, DefaultCharstyle>
+where
+    DRAW: DrawTarget<Color = COL>,
+    COL: PixelColor,
+    DefaultCharstyle: TextRenderer<Color = COL> + Clone,
+{
+    pub fn set_buffer(&mut self, buffer: &'a mut [COL]) {
+        self.painter.set_buffer(buffer);
+    }
+
+    pub fn start_drawing(&mut self, area: &Rectangle) {
+        self.painter.start_drawing(area);
+        self.painter.clear_buffer(self.style.background_color);
+    }
+
+    pub fn clear_buffer_raw(&mut self, color: COL) -> bool {
+        self.painter.clear_buffer(color)
+    }
+
+    pub fn finalize(&mut self) -> GuiResult<()> {
+        self.painter.finalize()
+    }
+
+    pub fn draw(&mut self, item: &impl Drawable<Color = COL>) -> GuiResult<()> {
+        self.painter.draw(item)
+    }
+}
+
+// SubUI impl
+
+/*
+impl<'a, COL, DefaultCharstyle, DRAW, PAINT> Ui<'a, DRAW, COL, DefaultCharstyle>
+    where
+        DRAW: DrawTarget<Color = COL>,
+        COL: PixelColor,
+        DefaultCharstyle: TextRenderer<Color = COL> + Clone,
+{
+    pub fn sub_ui(&mut self, bounds: Rectangle) -> Ui<'_, DRAW, COL, DefaultCharstyle> {
+        let mut sub_ui = Ui {
+            bounds,
+            painter: self.painter,
+            style: self.style.clone(),
+            next_auto_id_source: 0,
+            placer: todo!(),
+            interact: Interaction::None,
+            cleared: false,
+        };
+        sub_ui.cleared = self.cleared;
+        sub_ui
+    }
+}
+
+ */

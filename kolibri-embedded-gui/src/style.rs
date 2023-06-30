@@ -5,6 +5,7 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::text::renderer::{CharacterStyle, TextRenderer};
 use embedded_graphics::text::{Baseline, TextStyle, TextStyleBuilder};
 
+#[derive(Debug, Clone, Copy)]
 pub struct Spacing {
     pub item_spacing: Size,
     pub button_padding: Size,
@@ -67,6 +68,7 @@ pub fn medsize_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565>> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Style<COL: PixelColor, DefaultCharstyle: TextRenderer<Color = COL>> {
     pub background_color: COL,
     pub border_color: COL,

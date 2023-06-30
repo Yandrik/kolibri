@@ -205,6 +205,16 @@ impl<const N: usize> SmartstateProvider<N> {
         N
     }
 
+    /// Get a smartstate based on a relative position to the current position, without
+    /// changing the counter.
+    ///
+    /// (e.g. get_relative(1) is equivalent to peek())
+    pub fn get_relative(&mut self, pos: usize) -> &mut Smartstate {
+        self.states.get_mut(self.pos + pos).expect(
+            "ERROR: Smartstate Index out of range! Did you call get_relative() before next()?",
+        )
+    }
+
     pub fn next(&mut self) -> &mut Smartstate {
         let state = self
             .states
@@ -212,6 +222,12 @@ impl<const N: usize> SmartstateProvider<N> {
             .expect("ERROR: Smartstate buffer too small! Increase N in SmartstateProvider<N>.");
         self.pos += 1;
         state
+    }
+
+    pub fn current(&mut self) -> &mut Smartstate {
+        self.states
+            .get_mut(self.pos - 1)
+            .expect("ERROR: Smartstate Index out of range! Did you call current() before next()?")
     }
 
     pub fn prev(&mut self) -> &mut Smartstate {
@@ -238,5 +254,11 @@ impl<const N: usize> SmartstateProvider<N> {
         self.states
             .get_mut(pos)
             .expect("ERROR: Invalid index in SmartstateProvider!")
+    }
+
+    pub fn force_redraw_all(&mut self) {
+        for state in self.states.iter_mut() {
+            state.force_redraw();
+        }
     }
 }

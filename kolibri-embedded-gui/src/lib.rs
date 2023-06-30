@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 
 pub mod button;
 pub mod checkbox;
@@ -10,6 +10,7 @@ pub mod smartstate;
 pub mod spacer;
 pub mod style;
 // mod temp;
+pub mod framebuf;
 pub mod ui;
 
 pub mod prelude {

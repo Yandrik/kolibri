@@ -46,8 +46,12 @@ fn main() -> Result<(), core::convert::Infallible> {
     let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
     ui.clear_background().unwrap();
 
+    // alloc buffer
+    let mut buffer = [Rgb565::new(0, 0, 0); 100 * 100];
+
     'outer: loop {
         let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+        ui.set_buffer(&mut buffer);
         smartstates.restart_counter();
 
         match (last_down, mouse_down, location) {
@@ -78,7 +82,14 @@ fn main() -> Result<(), core::convert::Infallible> {
             println!("Clicked! i: {}", i);
             smartstates.peek().force_redraw();
         }
-        ui.add(Label::new(format!("Clicked {} times", i).as_ref()).smartstate(smartstates.next()));
+        ui.add_horizontal(
+            None,
+            Label::new(format!("Clicked {} times", i).as_ref()).smartstate(smartstates.next()),
+        );
+
+        ui.clear_col_to_end().unwrap();
+        ui.new_row();
+
         ui.add_horizontal(
             Some(20),
             Button::new("This is creative!", &mut b2).smartstate(smartstates.next()),
@@ -90,7 +101,7 @@ fn main() -> Result<(), core::convert::Infallible> {
             None,
             Label::new("Wanna live?").smartstate(smartstates.next()),
         );
-        ui.add(Checkbox::new(&mut c1));
+        ui.add(Checkbox::new(&mut c1).smartstate(smartstates.next()));
 
         window.update(&display);
 

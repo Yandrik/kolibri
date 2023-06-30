@@ -1,3 +1,4 @@
+use crate::smartstate::{Container, Smartstate};
 use crate::style::Style;
 use crate::ui::{GuiError, GuiResult, Response, Ui, Widget};
 use core::marker::PhantomData;
@@ -13,26 +14,34 @@ use embedded_graphics::text::{Baseline, Text, TextStyleBuilder};
 use embedded_iconoir::prelude::*;
 use embedded_iconoir::Icon;
 
-pub struct IconWidget<Ico: IconoirIcon> {
+pub struct IconWidget<'a, Ico: IconoirIcon> {
     marker: PhantomData<Ico>,
+    smartstate: Container<'a, Smartstate>,
 }
 
-impl<Ico: IconoirIcon> IconWidget<Ico> {
+impl<'a, Ico: IconoirIcon> IconWidget<'a, Ico> {
     /// Create a new IconWidget. The icon color will be ignored, if it's set.
     pub fn new(icon: Ico) -> Self {
         Self {
             marker: PhantomData,
+            smartstate: Container::empty(),
         }
     }
 
     pub fn new_from_type() -> Self {
         Self {
             marker: PhantomData,
+            smartstate: Container::empty(),
         }
+    }
+
+    pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
+        self.smartstate.set(smartstate);
+        self
     }
 }
 
-impl<Ico: IconoirIcon> Widget for IconWidget<Ico> {
+impl<Ico: IconoirIcon> Widget for IconWidget<'_, Ico> {
     fn draw<
         DRAW: DrawTarget<Color = COL>,
         COL: PixelColor,
@@ -43,19 +52,33 @@ impl<Ico: IconoirIcon> Widget for IconWidget<Ico> {
     ) -> GuiResult<Response> {
         // find size && allocate space
         let icon = Ico::new(ui.style().icon_color);
-        let space = ui.allocate_space(icon.size())?;
+        let iresponse = ui.allocate_space(icon.size())?;
+
+        let prevstate = self.smartstate.clone_inner();
+        self.smartstate.modify(|sm| *sm = Smartstate::state(1));
 
         // draw icon
-        let img = Image::new(
-            &icon,
-            space.area.top_left.add(Point::new(
-                0, // center vertically
-                (space.area.size.height - icon.size().height) as i32 / 2,
-            )),
-        );
-        ui.draw_raw(&img)
-            .map_err(|_| GuiError::DrawError(Some("Couldn't draw Icon")))?;
 
-        Ok(Response::new(space))
+        if !self.smartstate.eq_option(&prevstate) {
+            ui.start_drawing(&iresponse.area);
+
+            if !ui.cleared() {
+                ui.clear_area(iresponse.area)?;
+            }
+
+            let img = Image::new(
+                &icon,
+                iresponse.area.top_left.add(Point::new(
+                    0, // center vertically
+                    (iresponse.area.size.height - icon.size().height) as i32 / 2,
+                )),
+            );
+            ui.draw(&img)
+                .map_err(|_| GuiError::DrawError(Some("Couldn't draw Icon")))?;
+
+            ui.finalize()?;
+        }
+
+        Ok(Response::new(iresponse))
     }
 }
