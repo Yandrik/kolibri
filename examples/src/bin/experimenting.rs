@@ -1,6 +1,6 @@
 use embedded_graphics::geometry::Size;
 use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
-use embedded_graphics::prelude::Point;
+use embedded_graphics::prelude::{Point, WebColors};
 use embedded_graphics::primitives::{Circle, PrimitiveStyle, StyledDrawable};
 use embedded_graphics::text::Text;
 use embedded_graphics_simulator::sdl2::MouseButton;
@@ -14,6 +14,7 @@ use kolibri_embedded_gui::icons::{size12px, size24px, size32px};
 use kolibri_embedded_gui::label::Label;
 use kolibri_embedded_gui::prelude::*;
 use kolibri_embedded_gui::smartstate::{Smartstate, SmartstateProvider};
+use kolibri_embedded_gui::spacer::Spacer;
 use kolibri_embedded_gui::style::{medsize_rgb565_debug_style, medsize_rgb565_style};
 use kolibri_embedded_gui::ui::{Interaction, Ui};
 
@@ -95,13 +96,36 @@ fn main() -> Result<(), core::convert::Infallible> {
             Button::new("This is creative!", &mut b2).smartstate(smartstates.next()),
         );
         ui.add(IconWidget::<size24px::layout::CornerBottomLeft>::new_from_type());
-        ui.add(Button::new("Isn't it? \nIt totally is!", &mut b3).smartstate(smartstates.next()));
-        ui.add(Button::new("", &mut b4).smartstate(smartstates.next()));
         ui.add_horizontal(
             None,
-            Label::new("Wanna live?").smartstate(smartstates.next()),
+            Button::new("Isn't it? \nIt totally is!", &mut b3).smartstate(smartstates.next()),
         );
-        ui.add(Checkbox::new(&mut c1).smartstate(smartstates.next()));
+
+        ui.right_panel_ui(200, true, |ui| {
+            ui.add(Label::new("Right panel").smartstate(smartstates.next()));
+            ui.add(Label::new("Cool, ryte?").smartstate(smartstates.next()));
+            ui.add(Spacer::new(Size::new(0, 100)));
+            ui.add(Label::new("Bottom's here!"));
+            Ok(())
+        })
+        .unwrap();
+
+        ui.sub_ui(|ui| {
+            let style = ui.style_mut();
+
+            style.item_background_color = Rgb565::CSS_DARK_RED;
+
+            ui.add(Button::new("minibutton", &mut b4).smartstate(smartstates.next()));
+            ui.add_horizontal(
+                None,
+                Label::new("Wanna live?").smartstate(smartstates.next()),
+            );
+            ui.add(Checkbox::new(&mut c1).smartstate(smartstates.next()));
+            Ok(())
+        })
+        .unwrap();
+
+        ui.add(Button::new("minibutton2", &mut true).smartstate(smartstates.next()));
 
         window.update(&display);
 

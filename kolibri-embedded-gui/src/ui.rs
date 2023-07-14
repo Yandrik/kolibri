@@ -31,6 +31,9 @@ pub enum GuiError {
     // If you have a better idea, a PR is much appreciated.
     // (maybe a Box<dyn Error> with alloc feature gate? Or a 'String' (heapless / alloc) and format!()?)
     DrawError(Option<&'static str>),
+
+    /// The requested operation would cause the bounds to be different from the expected size
+    BoundsError,
 }
 
 impl GuiError {
@@ -116,6 +119,7 @@ pub trait Widget {
     ) -> GuiResult<Response>;
 }
 
+#[derive(Clone, Debug)]
 struct Placer {
     row: u32,
     col: u32,
@@ -229,8 +233,8 @@ impl<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> Painter<'a, COL, DRAW> 
 
         if let Some(buf) = &mut self.buffer_raw {
             let buf = WidgetFramebuf::try_new(unsafe { *buf.get() }, area.size, area.top_left);
-            if let Some(frbuf) = buf {
-                self.framebuf = Some(frbuf);
+            if let Some(framebuf) = buf {
+                self.framebuf = Some(framebuf);
             }
         }
     }
@@ -267,6 +271,24 @@ impl<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> Painter<'a, COL, DRAW> 
             item.draw(self.target)
                 .map_err(|_| GuiError::draw_error("Failed to draw item"))?;
         }
+        Ok(())
+    }
+
+    fn with_subpainter<'b, F>(&'b mut self, f: F) -> GuiResult<()>
+    where
+        F: FnOnce(Painter<'b, COL, DRAW>) -> GuiResult<()>,
+    {
+        let target: &'b mut DRAW = self.target;
+        let mut subpainter = Painter::new(target);
+
+        if matches!(self.framebuf, Some(_)) {
+            panic!("Cannot create subpainter when framebuf is in use!");
+        }
+
+        if let Some(buf) = &mut self.buffer_raw {
+            subpainter.set_buffer(unsafe { *buf.get() });
+        }
+        (f)(subpainter)?;
         Ok(())
     }
 }
@@ -412,7 +434,7 @@ where
     }
 
     /// Add a widget horizontally to the layout to the current row
-    pub fn add_horizontal(&mut self, height: Option<u32>, mut widget: impl Widget) -> Response {
+    pub fn add_horizontal(&mut self, height: Option<u32>, widget: impl Widget) -> Response {
         // set row height to the given
         self.expand_col_height(height.unwrap_or(0));
 
@@ -431,6 +453,10 @@ where
 
     pub fn style(&self) -> &Style<COL, DefaultCharstyle> {
         &self.style
+    }
+
+    pub fn style_mut(&mut self) -> &mut Style<COL, DefaultCharstyle> {
+        &mut self.style
     }
 
     pub fn new_row(&mut self) {
@@ -604,26 +630,102 @@ where
 
 // SubUI impl
 
-/*
-impl<'a, COL, DefaultCharstyle, DRAW, PAINT> Ui<'a, DRAW, COL, DefaultCharstyle>
-    where
-        DRAW: DrawTarget<Color = COL>,
-        COL: PixelColor,
-        DefaultCharstyle: TextRenderer<Color = COL> + Clone,
+impl<'a, COL, DefaultCharstyle, DRAW> Ui<'a, DRAW, COL, DefaultCharstyle>
+where
+    DRAW: DrawTarget<Color = COL>,
+    COL: PixelColor,
+    DefaultCharstyle: TextRenderer<Color = COL> + Clone,
 {
-    pub fn sub_ui(&mut self, bounds: Rectangle) -> Ui<'_, DRAW, COL, DefaultCharstyle> {
-        let mut sub_ui = Ui {
-            bounds,
-            painter: self.painter,
-            style: self.style.clone(),
-            next_auto_id_source: 0,
-            placer: todo!(),
-            interact: Interaction::None,
-            cleared: false,
+    /// Create a sub-UI with the given bounds, where you can modify all values. This is useful for
+    /// creating a sub-UI with a different style, or drawing to a screen area outside (or on top)
+    /// of the normal UI.
+    pub fn unchecked_sub_ui<F>(&mut self, bounds: Rectangle, f: F) -> GuiResult<()>
+    where
+        F: FnOnce(&mut Ui<DRAW, COL, DefaultCharstyle>) -> GuiResult<()>,
+    {
+        let bounds = Rectangle::new(
+            bounds.top_left.add(Point::new(
+                self.style.spacing.window_border_padding.height as i32,
+                self.style.spacing.window_border_padding.width as i32,
+            )),
+            bounds
+                .size
+                .saturating_sub(self.style.spacing.window_border_padding * 2),
+        );
+
+        // set up placer
+        let placer = Placer {
+            row: 0,
+            col: 0,
+            pos: Point::zero(),
+            col_height: 0,
+            bounds: bounds.size,
+            wrap: true,
         };
-        sub_ui.cleared = self.cleared;
-        sub_ui
+
+        self.painter.with_subpainter(|painter| {
+            let mut sub_ui = Ui {
+                painter,
+                bounds,
+                style: self.style.clone(),
+                interact: self.interact,
+                placer,
+                cleared: false,
+                next_auto_id_source: 0,
+            };
+            (f)(&mut sub_ui)
+        })?;
+
+        Ok(())
+    }
+
+    pub fn sub_ui<F>(&mut self, f: F) -> GuiResult<()>
+    where
+        F: FnOnce(&mut Ui<DRAW, COL, DefaultCharstyle>) -> GuiResult<()>,
+    {
+        self.painter.with_subpainter(|painter| {
+            let mut sub_ui = Ui {
+                painter,
+                bounds: self.bounds,
+                style: self.style.clone(),
+                interact: self.interact,
+                placer: self.placer.clone(),
+                cleared: false,
+                next_auto_id_source: 0,
+            };
+            let res = (f)(&mut sub_ui);
+
+            self.placer = sub_ui.placer;
+
+            res
+        })?;
+
+        Ok(())
+    }
+
+    pub fn right_panel_ui<F>(&mut self, width: u32, allow_smaller: bool, f: F) -> GuiResult<()>
+    where
+        F: FnOnce(&mut Ui<DRAW, COL, DefaultCharstyle>) -> GuiResult<()>,
+    {
+        // check bounds and remaining space of placer
+        let bounds = self.placer.bounds;
+
+        let y = self.placer.pos.y as u32;
+
+        let max_width = bounds.width - self.placer.pos.x as u32;
+        let max_height = bounds.height - y;
+
+        if width > max_width && !allow_smaller {
+            return Err(GuiError::BoundsError);
+        }
+
+        self.placer.bounds.width -= min(width, max_width);
+
+        let area = Rectangle::new(
+            Point::new((bounds.width - min(width, max_width)) as i32, y as i32),
+            Size::new(bounds.width - min(width, max_width), max_height),
+        );
+
+        self.unchecked_sub_ui(area, f)
     }
 }
-
- */
