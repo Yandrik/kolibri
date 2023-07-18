@@ -146,10 +146,10 @@ impl Placer {
 
         // check bounds
         let right = size.width + self.pos.x as u32;
-        let mut bottom = max(self.col_height, size.height) + self.pos.y as u32;
+        let mut bottom = max(self.row_height, size.height) + self.pos.y as u32;
         if !self.check_bounds(Size::new(right, bottom)) {
             if self.wrap {
-                bottom = self.pos.y as u32 + max(self.col_height, size.height);
+                bottom = self.pos.y as u32 + max(self.row_height, size.height);
                 // check that wrap fits
                 if !self.check_bounds(Size::new(0, bottom)) {
                     return Err(GuiError::NoSpaceLeft);
@@ -163,7 +163,7 @@ impl Placer {
         }
 
         // set new col height (expand if necessary)
-        self.col_height = max(self.col_height, size.height);
+        self.row_height = max(self.row_height, size.height);
 
         // set new position
         let item_pos = self.pos;
@@ -171,12 +171,12 @@ impl Placer {
 
         Ok(Rectangle::new(
             item_pos,
-            Size::new(size.width, self.col_height),
+            Size::new(size.width, self.row_height),
         ))
     }
 
     fn row_size(&self) -> Size {
-        Size::new(self.bounds.width, self.col_height)
+        Size::new(self.bounds.width, self.row_height)
     }
 
     fn space_available(&self) -> Size {
@@ -189,16 +189,16 @@ impl Placer {
     fn new_row(&mut self, height: u32) {
         self.row += 1;
         self.col = 0;
-        self.pos = Point::new(0, self.pos.y + self.col_height as i32);
-        self.col_height = height;
+        self.pos = Point::new(0, self.pos.y + self.row_height as i32);
+        self.row_height = height;
     }
 
-    fn col_height(&self) -> u32 {
-        self.col_height
+    fn row_height(&self) -> u32 {
+        self.row_height
     }
 
-    fn expand_col_height(&mut self, height: u32) {
-        self.col_height = max(self.col_height, height);
+    fn expand_row_height(&mut self, height: u32) {
+        self.row_height = max(self.row_height, height);
     }
 
     /// Check whether a size is in bounds of the widget (<= widget_size)
@@ -415,7 +415,7 @@ where
     pub fn add_and_clear_col_remainder(&mut self, widget: impl Widget, clear: bool) -> Response {
         let resp = self.add_raw(widget).expect("Couldn't add widget to UI");
         if clear {
-            self.clear_col_to_end().ok();
+            self.clear_row_to_end().ok();
         }
 
         self.new_row();
@@ -436,7 +436,7 @@ where
     /// Add a widget horizontally to the layout to the current row
     pub fn add_horizontal(&mut self, height: Option<u32>, widget: impl Widget) -> Response {
         // set row height to the given
-        self.expand_col_height(height.unwrap_or(0));
+        self.expand_row_height(height.unwrap_or(0));
 
         let resp = self.add_raw(widget).expect("Couldn't add widget to UI");
         // ignore space alignment errors (those are "fine". If wrapping is enabled,
@@ -471,8 +471,8 @@ where
 
     /// Increase the height of the current row to the given height, if it is
     /// larger than the current height
-    pub fn expand_col_height(&mut self, height: u32) {
-        self.placer.expand_col_height(height);
+    pub fn expand_row_height(&mut self, height: u32) {
+        self.placer.expand_row_height(height);
     }
 
     pub fn draw_raw<OUT>(
@@ -533,6 +533,10 @@ where
             interaction: inter,
         })
     }
+
+    pub fn get_row_height(&self) -> u32 {
+        self.placer.row_height()
+    }
 }
 
 // Clearing impls
@@ -553,8 +557,8 @@ where
     }
 
     /// Clear the current row with the background color
-    pub fn clear_col(&mut self) -> GuiResult<()> {
-        let col_height = self.placer.col_height;
+    pub fn clear_row(&mut self) -> GuiResult<()> {
+        let col_height = self.placer.row_height;
         let col_rect = Rectangle::new(
             Point::new(0, col_height as i32),
             Size::new(self.bounds.size.width, col_height),
@@ -562,8 +566,8 @@ where
         self.clear_area(col_rect)
     }
 
-    pub fn clear_col_to_end(&mut self) -> GuiResult<()> {
-        let col_height = self.placer.col_height;
+    pub fn clear_row_to_end(&mut self) -> GuiResult<()> {
+        let col_height = self.placer.row_height;
         let col_rect = Rectangle::new(
             self.placer.pos,
             Size::new(
