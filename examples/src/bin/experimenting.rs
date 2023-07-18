@@ -10,6 +10,7 @@ use embedded_graphics_simulator::{
 use kolibri_embedded_gui::button::Button;
 use kolibri_embedded_gui::checkbox::Checkbox;
 use kolibri_embedded_gui::icon::IconWidget;
+use kolibri_embedded_gui::iconbutton::IconButton;
 use kolibri_embedded_gui::icons::{size12px, size24px, size32px};
 use kolibri_embedded_gui::label::Label;
 use kolibri_embedded_gui::prelude::*;
@@ -40,7 +41,10 @@ fn main() -> Result<(), core::convert::Infallible> {
     let (mut b1, mut b2, mut b3, mut b4, mut b5, mut b6) =
         (false, false, false, false, false, false);
 
-    let mut smartstates = SmartstateProvider::<10>::new();
+    let mut ib1 = false;
+    let mut ib2 = false;
+
+    let mut smartstates = SmartstateProvider::<20>::new();
     let mut c1 = false;
 
     // clear bg once
@@ -88,7 +92,7 @@ fn main() -> Result<(), core::convert::Infallible> {
             Label::new(format!("Clicked {} times", i).as_ref()).smartstate(smartstates.next()),
         );
 
-        ui.clear_col_to_end().unwrap();
+        ui.clear_row_to_end().unwrap();
         ui.new_row();
 
         ui.add_horizontal(
@@ -96,16 +100,48 @@ fn main() -> Result<(), core::convert::Infallible> {
             Button::new("This is creative!", &mut b2).smartstate(smartstates.next()),
         );
         ui.add(IconWidget::<size24px::layout::CornerBottomLeft>::new_from_type());
-        ui.add_horizontal(
-            None,
-            Button::new("Isn't it? \nIt totally is!", &mut b3).smartstate(smartstates.next()),
-        );
 
         ui.right_panel_ui(200, true, |ui| {
             ui.add(Label::new("Right panel").smartstate(smartstates.next()));
             ui.add(Label::new("Cool, ryte?").smartstate(smartstates.next()));
-            ui.add(Spacer::new(Size::new(0, 100)));
-            ui.add(Label::new("Bottom's here!"));
+
+            ui.sub_ui(|ui| {
+                let style = ui.style_mut();
+
+                style.item_background_color = Rgb565::CSS_ORANGE_RED;
+                style.highlight_item_background_color = Rgb565::CSS_ORANGE_RED;
+                style.primary_color = Rgb565::CSS_RED;
+                style.text_color = Rgb565::CSS_BLACK;
+
+                ui.add_horizontal(
+                    None,
+                    IconButton::<size32px::audio::MicRemove>::new_from_type(&mut ib1)
+                        .smartstate(smartstates.next()),
+                );
+
+                Ok(())
+            })
+            .unwrap();
+
+            ui.add_horizontal(None, Spacer::new((20, 0).into()));
+
+            ui.sub_ui(|ui| {
+                let style = ui.style_mut();
+
+                style.item_background_color = Rgb565::CSS_LIME_GREEN;
+                style.highlight_item_background_color = Rgb565::CSS_LIME_GREEN;
+                style.primary_color = Rgb565::CSS_GREEN;
+                style.text_color = Rgb565::CSS_BLACK;
+
+                ui.add(
+                    IconButton::<size32px::audio::MicAdd>::new_from_type(&mut ib2)
+                        .smartstate(smartstates.next()),
+                );
+
+                Ok(())
+            })
+            .unwrap();
+
             Ok(())
         })
         .unwrap();
