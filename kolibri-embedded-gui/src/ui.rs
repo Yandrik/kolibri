@@ -14,6 +14,7 @@ use embedded_graphics::primitives::{
     PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, StyledDrawable,
 };
 use embedded_graphics::text::renderer::TextRenderer;
+use embedded_graphics::text::TextStyle;
 use embedded_graphics::{Drawable, Pixel};
 use embedded_iconoir::prelude::IconoirNewIcon;
 use embedded_iconoir::{make_icon_category, Icon};
@@ -119,17 +120,61 @@ pub trait Widget {
     ) -> GuiResult<Response>;
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum HorizontalAlign {
+    Left,
+    Center,
+    Right,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum VerticalAlign {
+    Top,
+    Center,
+    Bottom,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Align(pub HorizontalAlign, pub VerticalAlign);
+
+impl Default for Align {
+    fn default() -> Self {
+        Align(HorizontalAlign::Left, VerticalAlign::Top)
+    }
+}
+
 #[derive(Clone, Debug)]
 struct Placer {
     row: u32,
     col: u32,
     pos: Point,
-    col_height: u32,
+    row_height: u32,
     bounds: Size,
     wrap: bool,
+    align: Align,
 }
 
 impl Placer {
+    pub fn new(bounds: Size, wrap: bool, align: Align) -> Self {
+        Placer {
+            row: 0,
+            col: 0,
+            pos: Point::zero(),
+            row_height: 0,
+            bounds,
+            wrap,
+            align,
+        }
+    }
+
+    pub fn set_wrap(&mut self, wrap: bool) {
+        self.wrap = wrap;
+    }
+
+    pub fn set_align(&mut self, align: Align) {
+        self.align = align;
+    }
+
     fn next_no_wrap(&mut self, size: Size) -> GuiResult<Rectangle> {
         let wrap = self.wrap;
         self.wrap = false;
@@ -383,14 +428,12 @@ where
         );
 
         // set up placer
-        let placer = Placer {
-            row: 0,
-            col: 0,
-            pos: Point::zero(),
-            col_height: 0,
-            bounds: bounds.size,
-            wrap: true,
-        };
+
+        let placer = Placer::new(
+            bounds.size,
+            true,
+            Align(HorizontalAlign::Left, VerticalAlign::Top),
+        );
 
         Self {
             bounds,
@@ -658,14 +701,11 @@ where
         );
 
         // set up placer
-        let placer = Placer {
-            row: 0,
-            col: 0,
-            pos: Point::zero(),
-            col_height: 0,
-            bounds: bounds.size,
-            wrap: true,
-        };
+        let placer = Placer::new(
+            bounds.size,
+            true,
+            Align(HorizontalAlign::Left, VerticalAlign::Top),
+        );
 
         self.painter.with_subpainter(|painter| {
             let mut sub_ui = Ui {
@@ -727,9 +767,34 @@ where
 
         let area = Rectangle::new(
             Point::new((bounds.width - min(width, max_width)) as i32, y as i32),
-            Size::new(bounds.width - min(width, max_width), max_height),
+            Size::new(
+                bounds.width - (bounds.width - min(width, max_width)),
+                max_height,
+            ),
         );
 
         self.unchecked_sub_ui(area, f)
+    }
+}
+
+// debug drawing impl
+
+impl<'a, COL, DefaultCharstyle, DRAW> Ui<'a, DRAW, COL, DefaultCharstyle>
+where
+    DRAW: DrawTarget<Color = COL>,
+    COL: PixelColor,
+    DefaultCharstyle: TextRenderer<Color = COL> + Clone,
+{
+    pub fn draw_bounds_debug(&mut self, color: COL) -> GuiResult<()> {
+        let bounds = self.bounds;
+        bounds
+            .draw_styled(
+                &PrimitiveStyleBuilder::new()
+                    .stroke_color(color)
+                    .stroke_width(1)
+                    .build(),
+                &mut self.painter,
+            )
+            .map_err(|_| GuiError::DrawError(Some("Couldn't draw bounds")))
     }
 }
