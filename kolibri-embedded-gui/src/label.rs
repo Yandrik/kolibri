@@ -1,8 +1,11 @@
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiError, GuiResult, Response, Ui, Widget};
+use core::marker::PhantomData;
 use core::ops::Add;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
+use embedded_graphics::mono_font::MonoFont;
+use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyle, PrimitiveStyleBuilder, Rectangle};
@@ -11,6 +14,7 @@ use embedded_graphics::text::{Baseline, Text, TextStyleBuilder};
 
 pub struct Label<'a> {
     text: &'a str,
+    font: Option<MonoFont<'a>>,
     smartstate: Container<'a, Smartstate>,
 }
 
@@ -18,8 +22,14 @@ impl<'a> Label<'a> {
     pub fn new(text: &'a str) -> Label {
         Label {
             text,
+            font: None,
             smartstate: Container::empty(),
         }
+    }
+
+    pub fn with_font(mut self, font: MonoFont<'a>) -> Self {
+        self.font = Some(font);
+        self
     }
 
     pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
@@ -38,10 +48,17 @@ impl<'a> Widget for Label<'a> {
         ui: &mut Ui<DRAW, COL, CST>,
     ) -> GuiResult<Response> {
         // get size
+
+        let font = if let Some(font) = self.font {
+            font
+        } else {
+            ui.style().default_font
+        };
+
         let mut text = Text::new(
             self.text,
             Point::new(0, 0),
-            ui.style().default_text_style.0.clone(),
+            MonoTextStyle::new(&font, ui.style().text_color),
         );
 
         let size = text.bounding_box();
