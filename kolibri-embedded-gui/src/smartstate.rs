@@ -209,10 +209,12 @@ impl<const N: usize> SmartstateProvider<N> {
     /// changing the counter.
     ///
     /// (e.g. get_relative(1) is equivalent to peek())
-    pub fn get_relative(&mut self, pos: usize) -> &mut Smartstate {
-        self.states.get_mut(self.pos + pos).expect(
-            "ERROR: Smartstate Index out of range! Did you call get_relative() before next()?",
-        )
+    pub fn get_relative(&mut self, pos: i32) -> &mut Smartstate {
+        self.states
+            .get_mut((self.pos as i32 + pos) as usize)
+            .expect(
+                "ERROR: Smartstate Index out of range! Did you call get_relative() before next()?",
+            )
     }
 
     pub fn next(&mut self) -> &mut Smartstate {
