@@ -4,12 +4,67 @@
 Kolibri is an embedded Immediate Mode GUI mini-framework very strongly inspired by [egui](https://docs.rs/egui/latest/egui/).
 
 ## Current State
-Kolibri is currently in a very early stage of development. It is not yet ready for use in any
-non-experimental projects. If you're interested in contributing, feel free to open an issue or
+Kolibri is maturing at a fast pace. Right now, it already has everything you need for a small, basic application. 
+It's still in alpha tho, so breaking changes are to be expected for now.
+
+If you're interested in contributing, feel free to open an issue or
 a pull request.
 
 You can also generally find me in the [embedded graphics matrix channel](https://matrix.to/#/#rust-embedded-graphics:matrix.org)
 if you have any questions.
+
+### Implemented and Planned Features
+
+#### Basic Features
+
+- [x] embedded-graphics based ui rendering
+- [x] basic widgets (button, label, checkbox, ...)
+- [x] icons
+- [x] incremental rendering (only redraw what's actually needed)
+- [x] optional buffer-based rendering
+- [x] styling 
+
+#### Advanced (and granular)
+
+- [ ] layout
+    - [x] right-to-left top-to-bottom layout
+    - [ ] aligns (center, right, bottom, ...)
+    - [x] side panels (right)
+    - [ ] side panels (all sides)
+    - [ ] layers (e.g. drawing a modal in front of the ui)
+
+
+- [ ] styling
+    - [x] Styling System
+    - [x] Premade Styles for RGB565
+    - [ ] Premade Styles for other color types
+    - [x] Sub-UIs for editing styles on the fly
+
+- [ ] Widgets
+    - [x] Button
+    - [x] Label
+    - [x] Checkbox
+    - [x] Icon
+    - [x] Spacer
+    - [x] IconButton
+    - [ ] ListBox
+    - [ ] Something like a ScrollArea
+    - [ ] ProgressBar
+    - [ ] Toggle
+    - [ ] Graph
+
+- [ ] performance
+    - [x] heap-less if necessary
+    - [x] small buffer to draw everything
+    - [x] incremental redraws
+
+- [ ] input
+    - [x] generic input system
+    - [x] smartstate-reactive basic widgets
+    - [ ] custom gestures
+
+**Something missing?** Add an issue with the features you believe would be good.
+
 
 > #### Sidenote: What is a Kolibri?
 > Kolibri is the german word for Hummingbird, which is a small bird that is very fast and agile. 
