@@ -28,6 +28,7 @@ pub fn medsize_rgb565_debug_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb5
         default_widget_height: 16,
         border_width: 1,
         highlight_border_width: 1,
+        default_font: mono_font::iso_8859_10::FONT_9X15,
         default_text_style: (
             MonoTextStyle::new(&mono_font::iso_8859_10::FONT_9X15, Rgb565::WHITE),
             TextStyleBuilder::new().baseline(Baseline::Bottom).build(),
@@ -55,6 +56,7 @@ pub fn medsize_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565>> {
         default_widget_height: 16,
         border_width: 0,
         highlight_border_width: 1,
+        default_font: mono_font::iso_8859_10::FONT_9X15,
         default_text_style: (
             MonoTextStyle::new(&mono_font::iso_8859_10::FONT_9X15, Rgb565::WHITE),
             TextStyleBuilder::new().baseline(Baseline::Bottom).build(),
@@ -77,6 +79,7 @@ pub struct Style<COL: PixelColor, DefaultCharstyle: TextRenderer<Color = COL>> {
     pub icon_color: COL,
     pub default_widget_height: u32,
     pub border_width: u32,
+    pub default_font: MonoFont<'static>,
     pub default_text_style: (DefaultCharstyle, TextStyle),
     pub spacing: Spacing,
     pub item_background_color: COL,
