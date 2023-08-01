@@ -50,6 +50,19 @@ pub struct InternalResponse {
     pub interaction: Interaction,
 }
 
+impl InternalResponse {
+    pub fn new(area: Rectangle, interaction: Interaction) -> Self {
+        Self { area, interaction }
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            area: Rectangle::new(Point::zero(), Size::zero()),
+            interaction: Interaction::None,
+        }
+    }
+}
+
 /// Response for UI interaction / space allocation and such
 pub struct Response {
     pub internal: InternalResponse,
@@ -66,6 +79,9 @@ pub struct Response {
     /// e.g. the slider was dragged, etc.
     /// Always `false` for something like a [`Button`](crate::button::Button).
     pub changed: bool,
+
+    /// Whether the widget had an error while drawing
+    pub error: Option<GuiError>,
 }
 
 // builder pattern
@@ -76,8 +92,20 @@ impl Response {
             click: false,
             redraw: true,
             changed: false,
+            error: None,
         }
     }
+
+    pub fn from_error(error: GuiError) -> Response {
+        Response {
+            internal: InternalResponse::empty(),
+            click: false,
+            redraw: false,
+            changed: false,
+            error: Some(error),
+        }
+    }
+
     pub fn set_clicked(mut self, clicked: bool) -> Self {
         self.click = clicked;
         self
@@ -90,6 +118,11 @@ impl Response {
 
     pub fn set_changed(mut self, changed: bool) -> Self {
         self.changed = changed;
+        self
+    }
+
+    pub fn set_error(mut self, error: GuiError) -> Self {
+        self.error = Some(error);
         self
     }
 
@@ -107,6 +140,13 @@ impl Response {
     pub fn changed(&self) -> bool {
         self.changed
     }
+
+    /// Check whether the widget had an error while drawing
+    /// (e.g. the underlying draw target returned an error), no space was left, ...
+    pub fn error(&self) -> Option<GuiError> {
+        self.error
+    }
+
 }
 
 pub trait Widget {
@@ -456,7 +496,13 @@ where
     }
 
     pub fn add_and_clear_col_remainder(&mut self, widget: impl Widget, clear: bool) -> Response {
-        let resp = self.add_raw(widget).expect("Couldn't add widget to UI");
+        let resp = match self.add_raw(widget) {
+            Ok(resp) => resp,
+            Err(e) => {
+                // panic!("Failed to add widget to UI: {:?}", e);
+                Response::from_error(e)
+            }
+        };
         if clear {
             self.clear_row_to_end().ok();
         }
@@ -468,7 +514,13 @@ where
 
     pub fn add(&mut self, widget: impl Widget) -> Response {
         // draw widget. TODO: Add new auto ID
-        let resp = self.add_raw(widget).expect("Couldn't add widget to UI");
+        let resp = match self.add_raw(widget) {
+            Ok(resp) => resp,
+            Err(e) => {
+                // panic!("Failed to add widget to UI: {:?}", e);
+                Response::from_error(e)
+            }
+        };
 
         // create new row
         self.new_row();
@@ -481,7 +533,13 @@ where
         // set row height to the given
         self.expand_row_height(height.unwrap_or(0));
 
-        let resp = self.add_raw(widget).expect("Couldn't add widget to UI");
+        let resp = match self.add_raw(widget) {
+            Ok(resp) => resp,
+            Err(e) => {
+                // panic!("Failed to add widget to UI: {:?}", e);
+                Response::from_error(e)
+            }
+        };
         // ignore space alignment errors (those are "fine". If wrapping is enabled,
         // the next widget will be placed on the next row, without any space in between.)
         self.allocate_space_no_wrap(self.style().spacing.item_spacing)
