@@ -809,7 +809,7 @@ where
             ),
         );
 
-        self.unchecked_sub_ui(area, |_| Ok(()))
+        self.unchecked_sub_ui(area, f)
     }
 }
 
