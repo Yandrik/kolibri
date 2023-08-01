@@ -775,6 +775,42 @@ where
 
         self.unchecked_sub_ui(area, f)
     }
+
+    /// Create a sub-UI with the given bounds in the center of the screen.
+    /// This is very useful to draw OVER other UI elements. In other words:
+    /// When using this, make sure that you don't update the UI behind it if your display allows it,
+    /// or you will get flickering.
+    pub fn central_centered_panel_ui<F>(&mut self, width: u32, height: u32, f: F) -> GuiResult<()>
+        where
+            F: FnOnce(&mut Ui<DRAW, COL, DefaultCharstyle>) -> GuiResult<()>,
+    {
+        let bounds = self.placer.bounds;
+
+
+        let max_width = bounds.width;
+        let max_height = bounds.height;
+
+        if width > max_width {
+            return Err(GuiError::BoundsError);
+        }
+
+        if height > max_height {
+            return Err(GuiError::BoundsError);
+        }
+
+        self.placer.bounds.width -= min(width, max_width);
+        self.placer.bounds.height -= min(height, max_height);
+
+        let area = Rectangle::new(
+            Point::new(((bounds.width - width) / 2) as i32, ((bounds.height - height) / 2) as i32),
+            Size::new(
+                width,
+                height
+            ),
+        );
+
+        self.unchecked_sub_ui(area, |_| Ok(()))
+    }
 }
 
 // debug drawing impl
