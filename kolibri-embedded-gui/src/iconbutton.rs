@@ -15,23 +15,20 @@ use embedded_iconoir::prelude::{IconoirIcon, IconoirNewIcon};
 
 pub struct IconButton<'a, ICON: IconoirIcon> {
     icon: PhantomData<ICON>,
-    pressed: &'a mut bool,
     smartstate: Container<'a, Smartstate>,
 }
 
 impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
-    pub fn new(icon: ICON, pressed: &'a mut bool) -> Self {
+    pub fn new(icon: ICON) -> Self {
         Self {
             icon: PhantomData,
-            pressed,
             smartstate: Container::empty(),
         }
     }
 
-    pub fn new_from_type(pressed: &'a mut bool) -> Self {
+    pub fn new_from_type() -> Self {
         Self {
             icon: PhantomData,
-            pressed,
             smartstate: Container::empty(),
         }
     }
@@ -91,14 +88,13 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
         let icon_img = Image::new(&icon, center_offset);
 
         // check for click
-        let click = *self.pressed && matches!(iresponse.interaction, Interaction::Release(_));
+        let click = matches!(iresponse.interaction, Interaction::Release(_));
 
         // styles and smartstate
         let prevstate = self.smartstate.clone_inner();
 
-        let rect_style = match (iresponse.interaction, *self.pressed) {
-            (Interaction::None, _) => {
-                *self.pressed = false;
+        let rect_style = match iresponse.interaction {
+            Interaction::None => {
                 self.smartstate.modify(|st| *st = Smartstate::state(1));
 
                 PrimitiveStyleBuilder::new()
@@ -107,7 +103,7 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
                     .fill_color(ui.style().item_background_color)
                     .build()
             }
-            (Interaction::Hover(_) | Interaction::Drag(_) | Interaction::Release(_), false) => {
+            Interaction::Hover(_) => {
                 self.smartstate.modify(|st| *st = Smartstate::state(2));
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
@@ -116,12 +112,7 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
                     .build()
             }
 
-            (inter @ _, _) => {
-                match inter {
-                    Interaction::Click(_) => *self.pressed = true,
-                    Interaction::Release(_) => *self.pressed = false,
-                    _ => {}
-                }
+            _ => {
                 self.smartstate.modify(|st| *st = Smartstate::state(3));
 
                 PrimitiveStyleBuilder::new()

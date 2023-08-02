@@ -1,4 +1,5 @@
 use embedded_graphics::geometry::Size;
+use embedded_graphics::mono_font::ascii;
 use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
 use embedded_graphics::prelude::{Point, WebColors};
 use embedded_graphics::primitives::{Circle, PrimitiveStyle, StyledDrawable};
@@ -78,8 +79,7 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         if ui
             .add_horizontal(
-                None,
-                Button::new("Something", &mut b1).smartstate(smartstates.next()),
+                Button::new("Something").smartstate(smartstates.next()),
             )
             .clicked()
         {
@@ -88,19 +88,19 @@ fn main() -> Result<(), core::convert::Infallible> {
             smartstates.peek().force_redraw();
         }
         ui.add_horizontal(
-            None,
             Label::new(format!("Clicked {} times", i).as_ref()).smartstate(smartstates.next()),
         );
 
         ui.clear_row_to_end().unwrap();
         ui.new_row();
 
+        ui.expand_row_height(20);
         ui.add_horizontal(
-            Some(20),
-            Button::new("This is creative!", &mut b2).smartstate(smartstates.next()),
+            Button::new("This is creative!").smartstate(smartstates.next()),
         );
         ui.add(IconWidget::<size24px::layout::CornerBottomLeft>::new_from_type());
 
+        /*
         ui.right_panel_ui(200, true, |ui| {
             ui.add(Label::new("Right panel").smartstate(smartstates.next()));
             ui.add(Label::new("Cool, ryte?").smartstate(smartstates.next()));
@@ -121,7 +121,7 @@ fn main() -> Result<(), core::convert::Infallible> {
 
                 Ok(())
             })
-            .unwrap();
+                .unwrap();
 
             ui.add_horizontal(None, Spacer::new((20, 0).into()));
 
@@ -140,28 +140,45 @@ fn main() -> Result<(), core::convert::Infallible> {
 
                 Ok(())
             })
-            .unwrap();
+                .unwrap();
 
             Ok(())
         })
-        .unwrap();
+            .unwrap();
+        */
 
         ui.sub_ui(|ui| {
             let style = ui.style_mut();
 
             style.item_background_color = Rgb565::CSS_DARK_RED;
 
-            ui.add(Button::new("minibutton", &mut b4).smartstate(smartstates.next()));
+            ui.add(Button::new("minibutton").smartstate(smartstates.next()));
             ui.add_horizontal(
-                None,
                 Label::new("Wanna live?").smartstate(smartstates.next()),
             );
             ui.add(Checkbox::new(&mut c1).smartstate(smartstates.next()));
             Ok(())
         })
-        .unwrap();
+            .unwrap();
 
-        ui.add(Button::new("minibutton2", &mut true).smartstate(smartstates.next()));
+        ui.add(Button::new("minibutton2").smartstate(smartstates.next()));
+
+
+        ui.central_centered_panel_ui(280, 200, |ui| {
+            if smartstates.peek().is_empty() {
+                ui.clear_background().ok();
+            }
+            ui.style_mut().icon_color = Rgb565::RED;
+            ui.add(IconWidget::<size32px::actions::WarningTriangle>::new_from_type().smartstate(smartstates.next()));
+            ui.add(Label::new("Caution!").with_font(ascii::FONT_8X13_BOLD).smartstate(smartstates.next()));
+            ui.add(Label::new("This is heavy equipment.\nIf you are not sure what \nexactly you are doing,\nyou might hurt yourself badly.\n").smartstate(smartstates.next()));
+
+            if ui.add(Button::new("I know what I am doing").smartstate(smartstates.next())).clicked() {
+
+            }
+
+            Ok(())
+        }).unwrap();
 
         window.update(&display);
 
@@ -189,6 +206,6 @@ fn main() -> Result<(), core::convert::Infallible> {
             }
         }
     }
-
     Ok(())
 }
+

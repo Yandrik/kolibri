@@ -529,10 +529,8 @@ where
     }
 
     /// Add a widget horizontally to the layout to the current row
-    pub fn add_horizontal(&mut self, height: Option<u32>, widget: impl Widget) -> Response {
-        // set row height to the given
-        self.expand_row_height(height.unwrap_or(0));
-
+    pub fn add_horizontal(&mut self, widget: impl Widget) -> Response {
+        // add widget (auto-expands row height potentially
         let resp = match self.add_raw(widget) {
             Ok(resp) => resp,
             Err(e) => {

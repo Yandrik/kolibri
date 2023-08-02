@@ -12,15 +12,13 @@ use embedded_graphics::text::{Baseline, Text, TextStyleBuilder};
 
 pub struct Button<'a> {
     label: &'a str,
-    pressed: &'a mut bool,
     smartstate: Container<'a, Smartstate>,
 }
 
 impl<'a> Button<'a> {
-    pub fn new(label: &'a str, pressed: &'a mut bool) -> Button<'a> {
+    pub fn new(label: &'a str) -> Button<'a> {
         Button {
             label,
-            pressed,
             smartstate: Container::empty(),
         }
     }
@@ -67,14 +65,13 @@ impl Widget for Button<'_> {
         text.text_style.baseline = Baseline::Top;
 
         // check for click
-        let click = *self.pressed && matches!(iresponse.interaction, Interaction::Release(_));
+        let click = matches!(iresponse.interaction, Interaction::Release(_));
 
         // styles and smartstate
         let prevstate = self.smartstate.clone_inner();
 
-        let rect_style = match (iresponse.interaction, *self.pressed) {
-            (Interaction::None, _) => {
-                *self.pressed = false;
+        let rect_style = match iresponse.interaction {
+            (Interaction::None) => {
                 self.smartstate.modify(|st| *st = Smartstate::state(1));
 
                 PrimitiveStyleBuilder::new()
@@ -83,8 +80,9 @@ impl Widget for Button<'_> {
                     .fill_color(ui.style().item_background_color)
                     .build()
             }
-            (Interaction::Hover(_) | Interaction::Drag(_) | Interaction::Release(_), false) => {
+            Interaction::Hover(_) => {
                 self.smartstate.modify(|st| *st = Smartstate::state(2));
+
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
@@ -92,12 +90,7 @@ impl Widget for Button<'_> {
                     .build()
             }
 
-            (inter @ _, _) => {
-                match inter {
-                    Interaction::Click(_) => *self.pressed = true,
-                    Interaction::Release(_) => *self.pressed = false,
-                    _ => {}
-                }
+            _ => {
                 self.smartstate.modify(|st| *st = Smartstate::state(3));
 
                 PrimitiveStyleBuilder::new()
