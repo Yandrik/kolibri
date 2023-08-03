@@ -670,7 +670,7 @@ where
         let col_rect = Rectangle::new(
             self.placer.pos,
             Size::new(
-                self.bounds.size.width - self.placer.pos.x.max(0) as u32,
+                self.placer.bounds.width - self.placer.pos.x.max(0) as u32,
                 col_height,
             ),
         );
