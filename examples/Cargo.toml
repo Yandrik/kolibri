@@ -8,6 +8,9 @@ edition = "2021"
 [[bin]]
 name = "experimenting"
 
+[[bin]]
+name = "motion-scheduler"
+
 [dependencies]
 
 kolibri-embedded-gui = { path = "../kolibri-embedded-gui" }
