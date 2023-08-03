@@ -165,6 +165,11 @@ impl Smartstate {
         Self(state, true)
     }
 
+    pub fn set_state(&mut self, state: u16) {
+        self.0 = state;
+        self.1 = true;
+    }
+
     pub fn is_empty(&self) -> bool {
         !self.1
     }
