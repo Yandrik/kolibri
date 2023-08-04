@@ -24,6 +24,7 @@ use kolibri_embedded_gui::spacer::Spacer;
 use kolibri_embedded_gui::style::{medsize_rgb565_debug_style, medsize_rgb565_style};
 use kolibri_embedded_gui::ui::{GuiResult, Interaction, Response, Ui, Widget};
 use std::cmp::max;
+use std::ops::{Add, Sub};
 use std::time::Duration;
 
 #[derive(Debug, Copy, Clone)]
@@ -138,6 +139,44 @@ impl Widget for StepWidget<'_> {
 
         let pressed = matches!(interact, Interaction::Release(_));
 
+        // change (up/down/center)
+
+        if pressed {
+            if let Some(intr) = &intr {
+                match intr {
+                    ButtonPress::Up => match self.step {
+                        Step::Wait(dur) => {
+                            *dur = dur.add(Duration::from_secs(1));
+                        }
+                        Step::Clamp(action) | Step::Injection(action) | Step::Pushrod(action) => {
+                            *action = match action {
+                                PistonAction::Extend => PistonAction::Rest,
+                                PistonAction::Rest => PistonAction::Retract,
+                                PistonAction::Retract => PistonAction::Extend,
+                            }
+                        }
+                    },
+                    ButtonPress::Down => match self.step {
+                        Step::Wait(dur) => {
+                            *dur = max(dur.sub(Duration::from_secs(1)), Duration::from_secs(1));
+                        }
+                        Step::Clamp(action) | Step::Injection(action) | Step::Pushrod(action) => {
+                            *action = match action {
+                                PistonAction::Extend => PistonAction::Retract,
+                                PistonAction::Rest => PistonAction::Extend,
+                                PistonAction::Retract => PistonAction::Rest,
+                            }
+                        }
+                    },
+                    ButtonPress::Center => {
+                        // TODO
+                    }
+                }
+            }
+        }
+
+        let changed = matches!(intr, Some(ButtonPress::Up) | Some(ButtonPress::Down));
+
         if !self.smartstate.eq_option(&prevstate) {
             // draw
             ui.start_drawing(&iresponse.area);
@@ -161,75 +200,73 @@ impl Widget for StepWidget<'_> {
             } else {
                 ui.style().icon_color
             };
+            let pos = iresponse.area.top_left
+                + Point::new(
+                    0,
+                    ICON_SIZE as i32 + ui.style().spacing.item_spacing.height as i32,
+                );
 
             match self.step {
                 Step::Clamp(action) => {
                     // todo: animations::TransitionLeft icon
                     let i = size18px::animations::TransitionLeft::new(col);
-                    let icon = Image::new(
-                        &i,
-                        iresponse.area.top_left
-                            + Point::new(
-                                0,
-                                ICON_SIZE as i32 + ui.style().spacing.item_spacing.height as i32,
-                            ),
-                    );
+                    let icon = Image::new(&i, pos);
                     ui.draw(&icon)?;
                 }
                 Step::Injection(action) => {
                     // todo: system::Type icon
                     let i = size18px::system::Type::new(col);
-                    let icon = Image::new(
-                        &i,
-                        iresponse.area.top_left
-                            + Point::new(0, 12 + ui.style().spacing.item_spacing.height as i32),
-                    );
+                    let icon = Image::new(&i, pos);
                     ui.draw(&icon)?;
                 }
                 Step::Pushrod(action) => {
                     // todo: actions::MenuScale icon
                     let i = size18px::actions::MenuScale::new(col);
-                    let icon = Image::new(
-                        &i,
-                        iresponse.area.top_left
-                            + Point::new(
-                                0,
-                                ICON_SIZE as i32 + ui.style().spacing.item_spacing.height as i32,
-                            ),
-                    );
+                    let icon = Image::new(&i, pos);
                     ui.draw(&icon)?;
                 }
                 Step::Wait(dur) => {
                     let i = size18px::activities::Hourglass::new(col);
-                    let icon = Image::new(
-                        &i,
-                        iresponse.area.top_left
-                            + Point::new(
-                                0,
-                                ICON_SIZE as i32 + ui.style().spacing.item_spacing.height as i32,
-                            ),
-                    );
+                    let icon = Image::new(&i, pos);
                     ui.draw(&icon)?;
                 }
             }
 
+            let pos = iresponse.area.top_left
+                + Point::new(
+                    ICON_SIZE as i32 + ui.style().spacing.item_spacing.width as i32,
+                    ICON_SIZE as i32 + ui.style().spacing.item_spacing.height as i32,
+                );
+
             match self.step {
                 Step::Clamp(action) | Step::Injection(action) | Step::Pushrod(action) => {
                     match action {
-                        PistonAction::Extend => {}
-                        PistonAction::Retract => {}
-                        PistonAction::Rest => {}
+                        PistonAction::Extend => {
+                            ui.draw(&Image::new(&size18px::actions::Upload::new(col), pos))?
+                        }
+                        PistonAction::Retract => {
+                            ui.draw(&Image::new(&size18px::actions::Download::new(col), pos))?
+                        }
+                        PistonAction::Rest => {
+                            ui.draw(&Image::new(&size18px::actions::Minus::new(col), pos))?
+                        }
                     }
                 }
                 Step::Wait(dur) => {
                     // text
                     let font = ui.style().default_font;
-                    let text_style = MonoTextStyle::new(&font, ui.style().text_color);
+                    let text_style = MonoTextStyle::new(&font, col);
                     let pos = Point::new(
                         ICON_SIZE as i32 + ui.style().spacing.item_spacing.width as i32,
                         ICON_SIZE as i32 + ui.style().spacing.item_spacing.height as i32,
                     ) + iresponse.area.top_left;
-                    ui.draw(&Text::new(&format!("{}s", dur.as_secs()), pos, text_style))?;
+                    let val = format!("{}s", dur.as_secs());
+                    let mut text = Text::new(&val, pos, text_style);
+                    text.position += Point::new(
+                        0,
+                        ((ICON_SIZE / 2 + text.bounding_box().size.height / 4) as i32),
+                    );
+                    ui.draw(&text)?;
                 }
             }
 
@@ -264,7 +301,7 @@ fn main() -> Result<(), core::convert::Infallible> {
 
     let output_settings = OutputSettingsBuilder::new()
         // .pixel_spacing(2)
-        // .scale(2)
+        .scale(2)
         .build();
     let mut window = Window::new("Hello World", &output_settings);
 
@@ -291,6 +328,8 @@ fn main() -> Result<(), core::convert::Infallible> {
     let mut buffer = [Rgb565::new(0, 0, 0); 100 * 100];
 
     let mut step = Step::Clamp(PistonAction::Extend);
+    let mut step1 = Step::Injection(PistonAction::Extend);
+    let mut step11 = Step::Pushrod(PistonAction::Extend);
     let mut step2 = Step::Wait(Duration::from_secs(2));
 
     'outer: loop {
@@ -317,8 +356,12 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         // === UI ===
 
-        ui.add(StepWidget::new(&mut step));
-        ui.add(StepWidget::new(&mut step2));
+        ui.add_horizontal(StepWidget::new(&mut step).smartstate(smartstates.next()));
+        ui.add_horizontal(StepWidget::new(&mut step1).smartstate(smartstates.next()));
+        ui.add_horizontal(StepWidget::new(&mut step11).smartstate(smartstates.next()));
+        ui.add_horizontal(StepWidget::new(&mut step2).smartstate(smartstates.next()));
+        ui.add_horizontal(StepWidget::new(&mut step2).smartstate(smartstates.next()));
+        ui.add(StepWidget::new(&mut step2).smartstate(smartstates.next()));
 
         // === END UI ===
 
