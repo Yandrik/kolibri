@@ -146,7 +146,6 @@ impl Response {
     pub fn error(&self) -> Option<GuiError> {
         self.error
     }
-
 }
 
 pub trait Widget {
@@ -241,7 +240,7 @@ impl Placer {
                 }
 
                 // perform wrap
-                self.new_row(size.height);
+                self.new_row(size.height); // TODO: better / proper wrap impl
             } else {
                 return Err(GuiError::NoSpaceLeft);
             }
@@ -837,11 +836,10 @@ where
     /// When using this, make sure that you don't update the UI behind it if your display allows it,
     /// or you will get flickering.
     pub fn central_centered_panel_ui<F>(&mut self, width: u32, height: u32, f: F) -> GuiResult<()>
-        where
-            F: FnOnce(&mut Ui<DRAW, COL, DefaultCharstyle>) -> GuiResult<()>,
+    where
+        F: FnOnce(&mut Ui<DRAW, COL, DefaultCharstyle>) -> GuiResult<()>,
     {
         let bounds = self.placer.bounds;
-
 
         let max_width = bounds.width;
         let max_height = bounds.height;
@@ -858,11 +856,11 @@ where
         self.placer.bounds.height -= min(height, max_height);
 
         let area = Rectangle::new(
-            Point::new(((bounds.width - width) / 2) as i32, ((bounds.height - height) / 2) as i32),
-            Size::new(
-                width,
-                height
+            Point::new(
+                ((bounds.width - width) / 2) as i32,
+                ((bounds.height - height) / 2) as i32,
             ),
+            Size::new(width, height),
         );
 
         self.unchecked_sub_ui(area, f)
