@@ -288,7 +288,9 @@ impl Widget for StepWidget<'_> {
             ui.finalize()?;
         }
 
-        Ok(Response::new(iresponse).set_changed(false /* TODO */))
+        Ok(Response::new(iresponse)
+            .set_changed(changed)
+            .set_clicked(pressed))
     }
 }
 
