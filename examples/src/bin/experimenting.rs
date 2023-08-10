@@ -78,9 +78,7 @@ fn main() -> Result<(), core::convert::Infallible> {
         last_down = mouse_down;
 
         if ui
-            .add_horizontal(
-                Button::new("Something").smartstate(smartstates.next()),
-            )
+            .add_horizontal(Button::new("Something").smartstate(smartstates.next()))
             .clicked()
         {
             i = i.saturating_add(1);
@@ -95,9 +93,7 @@ fn main() -> Result<(), core::convert::Infallible> {
         ui.new_row();
 
         ui.expand_row_height(20);
-        ui.add_horizontal(
-            Button::new("This is creative!").smartstate(smartstates.next()),
-        );
+        ui.add_horizontal(Button::new("This is creative!").smartstate(smartstates.next()));
         ui.add(IconWidget::<size24px::layout::CornerBottomLeft>::new_from_type());
 
         /*
@@ -146,24 +142,10 @@ fn main() -> Result<(), core::convert::Infallible> {
         })
             .unwrap();
         */
+        
+        
 
-        ui.sub_ui(|ui| {
-            let style = ui.style_mut();
-
-            style.item_background_color = Rgb565::CSS_DARK_RED;
-
-            ui.add(Button::new("minibutton").smartstate(smartstates.next()));
-            ui.add_horizontal(
-                Label::new("Wanna live?").smartstate(smartstates.next()),
-            );
-            ui.add(Checkbox::new(&mut c1).smartstate(smartstates.next()));
-            Ok(())
-        })
-            .unwrap();
-
-        ui.add(Button::new("minibutton2").smartstate(smartstates.next()));
-
-
+        /*
         ui.central_centered_panel_ui(280, 200, |ui| {
             if smartstates.peek().is_empty() {
                 ui.clear_background().ok();
@@ -179,6 +161,8 @@ fn main() -> Result<(), core::convert::Infallible> {
 
             Ok(())
         }).unwrap();
+
+         */
 
         window.update(&display);
 
@@ -208,4 +192,3 @@ fn main() -> Result<(), core::convert::Infallible> {
     }
     Ok(())
 }
-
