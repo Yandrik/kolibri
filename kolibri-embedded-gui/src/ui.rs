@@ -429,6 +429,12 @@ pub enum Interaction {
     None,
 }
 
+impl Default for Interaction {
+    fn default() -> Self {
+        Interaction::None
+    }
+}
+
 impl Interaction {
     fn get_point(&self) -> Option<Point> {
         match self {
