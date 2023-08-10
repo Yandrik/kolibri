@@ -66,6 +66,10 @@ impl Widget for Button<'_> {
 
         // check for click
         let click = matches!(iresponse.interaction, Interaction::Release(_));
+        let down = matches!(
+            iresponse.interaction,
+            Interaction::Click(_) | Interaction::Drag(_)
+        );
 
         // styles and smartstate
         let prevstate = self.smartstate.clone_inner();
@@ -114,6 +118,6 @@ impl Widget for Button<'_> {
             ui.finalize()?;
         }
 
-        Ok(Response::new(iresponse).set_clicked(click))
+        Ok(Response::new(iresponse).set_clicked(click).set_down(down))
     }
 }

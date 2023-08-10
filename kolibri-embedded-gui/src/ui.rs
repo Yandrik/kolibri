@@ -68,6 +68,12 @@ pub struct Response {
     pub internal: InternalResponse,
     /// Whether the widget was clicked (as in successfully interacted with)
     pub click: bool,
+
+    /// Whether the widget is in a "down" state (e.g. a button is pressed, but not yet released)
+    ///
+    /// Can be used to do things while a button is held down
+    pub down: bool,
+
     /// Marker to tell the UI that this widget was redrawn this frame (if you don't have redraw
     /// / change detection, just set this to `true`, as you are redrawing every frame)
     ///
@@ -92,18 +98,13 @@ impl Response {
             click: false,
             redraw: true,
             changed: false,
+            down: false,
             error: None,
         }
     }
 
     pub fn from_error(error: GuiError) -> Response {
-        Response {
-            internal: InternalResponse::empty(),
-            click: false,
-            redraw: false,
-            changed: false,
-            error: Some(error),
-        }
+        Response::new(InternalResponse::empty()).set_error(error)
     }
 
     pub fn set_clicked(mut self, clicked: bool) -> Self {
@@ -126,9 +127,21 @@ impl Response {
         self
     }
 
+    pub fn set_down(mut self, down: bool) -> Self {
+        self.down = down;
+        self
+    }
+
     /// Check whether the widget was clicked (as in successfully interacted with)
     pub fn clicked(&self) -> bool {
         self.click
+    }
+
+    /// Check whether the widget is in a "down" state (e.g. a button is pressed, but not yet released)
+    ///
+    /// Can be used to do things while a button is held down
+    pub fn down(&self) -> bool {
+        self.down
     }
 
     /// Check whether the widget was redrawn this frame
