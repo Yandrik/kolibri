@@ -12,6 +12,7 @@ pub mod style;
 // mod temp;
 pub mod framebuf;
 pub mod iconbutton;
+pub mod helpers;
 pub mod ui;
 
 pub mod prelude {
