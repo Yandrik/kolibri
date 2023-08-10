@@ -11,6 +11,9 @@ name = "experimenting"
 [[bin]]
 name = "motion-scheduler"
 
+[[bin]]
+name = "keyboard"
+
 [dependencies]
 
 kolibri-embedded-gui = { path = "../kolibri-embedded-gui" }
