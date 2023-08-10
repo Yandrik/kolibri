@@ -1,3 +1,5 @@
+use core::ops::Range;
+
 pub struct Container<'a, T> {
     optional_something: Option<&'a mut T>,
 }
@@ -195,6 +197,7 @@ pub struct SmartstateProvider<const N: usize = 16> {
 }
 
 impl<const N: usize> SmartstateProvider<N> {
+    #[inline(always)]
     pub fn new() -> Self {
         Self {
             states: [Smartstate::empty(); N],
@@ -202,18 +205,25 @@ impl<const N: usize> SmartstateProvider<N> {
         }
     }
 
+    #[inline(always)]
     pub fn restart_counter(&mut self) {
         self.pos = 0;
     }
 
+    #[inline(always)]
     pub fn size(&self) -> usize {
         N
+    }
+
+    pub fn get_pos(&self) -> usize {
+        self.pos
     }
 
     /// Get a smartstate based on a relative position to the current position, without
     /// changing the counter.
     ///
     /// (e.g. get_relative(1) is equivalent to peek())
+    #[inline(always)]
     pub fn get_relative(&mut self, pos: i32) -> &mut Smartstate {
         self.states
             .get_mut((self.pos as i32 + pos) as usize)
@@ -222,6 +232,7 @@ impl<const N: usize> SmartstateProvider<N> {
             )
     }
 
+    #[inline(always)]
     pub fn next(&mut self) -> &mut Smartstate {
         let state = self
             .states
@@ -231,41 +242,92 @@ impl<const N: usize> SmartstateProvider<N> {
         state
     }
 
+    #[inline(always)]
     pub fn current(&mut self) -> &mut Smartstate {
         self.states
             .get_mut(self.pos - 1)
             .expect("ERROR: Smartstate Index out of range! Did you call current() before next()?")
     }
 
+    #[inline(always)]
     pub fn prev(&mut self) -> &mut Smartstate {
         self.states
             .get_mut(self.pos - 2)
             .expect("ERROR: Smartstate Index out of range! Did you call prev() before 2 * next()?")
     }
 
+    #[inline(always)]
     pub fn peek(&mut self) -> &mut Smartstate {
         self.states
             .get_mut(self.pos)
             .expect("ERROR: Smartstate Index out of range! Did you call peek() at max capacity?")
     }
 
+    #[inline(always)]
     pub fn skip_one(&mut self) {
         self.skip(1);
     }
 
+    #[inline(always)]
     pub fn skip(&mut self, n: usize) {
         self.pos += n;
     }
 
+    #[inline(always)]
     pub fn get(&mut self, pos: usize) -> &mut Smartstate {
         self.states
             .get_mut(pos)
             .expect("ERROR: Invalid index in SmartstateProvider!")
     }
 
+    #[inline(always)]
     pub fn force_redraw_all(&mut self) {
         for state in self.states.iter_mut() {
             state.force_redraw();
+        }
+    }
+
+    /// Force redraw in all smartstates after (and including) the current position.
+    ///
+    /// This is useful if you want to force a redraw of all widgets after a certain
+    /// point in the UI.
+    #[inline(always)]
+    pub fn force_redraw_remaining(&mut self) {
+        self.force_redraw_from_offset(0);
+    }
+
+    /// Force redraw in all smartstates after (and including) the current position plus an offset.
+    ///
+    ///  For example, `force_redraw_from_offset(0)` is equivalent to `force_redraw_remaining()`.
+    ///
+    /// This is useful if you want to force a redraw of all widgets after a certain
+    /// point in the UI.
+    #[inline(always)]
+    pub fn force_redraw_from_offset(&mut self, offset: i32) {
+        self.force_redraw_range((self.pos as i32 + offset) as usize..N);
+    }
+
+    /// Force redraw in all smartstates after (and including) the given **absolute** position.
+    ///
+    /// For example, `force_redraw_from(0)` is equivalent to `force_redraw_all()`.
+    #[inline(always)]
+    pub fn force_redraw_from(&mut self, pos: usize) {
+        self.force_redraw_range(pos..N);
+    }
+
+    /// Force redraw for all states in the given range **relative to the current position**
+    #[inline(always)]
+    pub fn force_redraw_range_relative(&mut self, range: impl IntoIterator<Item = i32>) {
+        for i in range.into_iter().map(|i| self.pos as i32 + i) {
+            self.states[i as usize].force_redraw();
+        }
+    }
+
+    /// Force redraw for all states in the given range
+    #[inline(always)]
+    pub fn force_redraw_range(&mut self, range: impl IntoIterator<Item = usize>) {
+        for i in range.into_iter() {
+            self.states[i].force_redraw();
         }
     }
 }
