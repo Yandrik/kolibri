@@ -463,6 +463,25 @@ where
     cleared: bool,
 }
 
+// getters for Ui things
+impl<'a, DRAW, COL, DefaultCharstyle> Ui<'a, DRAW, COL, DefaultCharstyle>
+where
+    DRAW: DrawTarget<Color = COL>,
+    COL: PixelColor,
+    DefaultCharstyle: TextRenderer<Color = COL> + Clone,
+{
+    /// Get the width of the UI's placer. Note that this **isn't the entire screen width**.
+    /// To get the screen width, use `get_screen_width()`.
+    pub fn get_width(&self) -> u32 {
+        self.placer.bounds.width
+    }
+
+    /// Get the width of the screen
+    pub fn get_screen_width(&self) -> u32 {
+        self.bounds.size.width + self.style.spacing.window_border_padding.width * 2
+    }
+}
+
 impl<'a, COL, DefaultCharstyle, DRAW> Ui<'a, DRAW, COL, DefaultCharstyle>
 where
     DRAW: DrawTarget<Color = COL>,
