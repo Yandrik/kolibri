@@ -694,24 +694,55 @@ where
 
     /// Clear the current row with the background color
     pub fn clear_row(&mut self) -> GuiResult<()> {
-        let col_height = self.placer.row_height;
-        let col_rect = Rectangle::new(
-            Point::new(0, col_height as i32),
-            Size::new(self.bounds.size.width, col_height),
+        let row_height = self.placer.row_height();
+        let row_rect = Rectangle::new(
+            Point::new(0, self.placer.pos.y),
+            Size::new(self.placer.bounds.width, row_height),
         );
-        self.clear_area(col_rect)
+        self.clear_area(row_rect)
     }
 
+    /// Clear the row to the end of the screen. This is useful for clearing the rendering
+    /// remains of partially drawn widgets and such (e.g. clearing after a label's width went down)
+    ///
+    /// As this is fairly expensive, it should only be used when necessary.
+    ///
+    /// Sidenote: This clears the entire row to the end, taking the row_height into account.
+    /// What that means is that - in general - you shoud use this **after** adding a widget,
+    /// as the row height will be increased to the widget's height.
     pub fn clear_row_to_end(&mut self) -> GuiResult<()> {
         let col_height = self.placer.row_height;
         let col_rect = Rectangle::new(
-            self.placer.pos,
+            // clear right to widget bounds
+            Point::new(
+                self.placer.pos.x + self.style.spacing.window_border_padding.width as i32,
+                self.placer.pos.y,
+            ),
             Size::new(
-                self.placer.bounds.width - self.placer.pos.x.max(0) as u32,
+                (self.placer.bounds.width as i32 - self.placer.pos.x).max(0) as u32,
                 col_height,
             ),
         );
         self.clear_area(col_rect)
+    }
+
+    /// Clear the screen down to the bottom. This is useful for clearing the rendering
+    /// remains of partially drawn widgets and such (e.g. clearing after a label's width went down),
+    /// especially for multiple rows at the same time.
+    ///
+    /// As this is fairly expensive, it should only be used when necessary.
+    ///
+    /// Note that this clears **the entire screen** down from the current placer position,
+    /// so call this at the start of a new row *before drawing on it* if you want to draw on the
+    /// cleared area, otherwise it will erase any widgets you already drew.
+    pub fn clear_to_bottom(&mut self) -> GuiResult<()> {
+        self.clear_area(Rectangle::new(
+            Point::new(0, self.placer.pos.y),
+            Size::new(
+                self.placer.bounds.width,
+                self.placer.bounds.height - self.placer.pos.y as u32,
+            ),
+        ))
     }
 
     pub fn clear_background(&mut self) -> GuiResult<()> {
