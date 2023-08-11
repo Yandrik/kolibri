@@ -545,6 +545,7 @@ pub fn draw_keyboard<
         })
         .unwrap_or(true);
 
+    // FIXME: fix redraw after each key press
     if redraw {
         if let Some(smp) = smartstates.as_mut() {
             smp.force_redraw_remaining();
