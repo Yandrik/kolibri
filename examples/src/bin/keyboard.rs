@@ -122,6 +122,7 @@ fn main() -> Result<(), core::convert::Infallible> {
         ui.sub_ui(|ui| {
             ui.style_mut().spacing.item_spacing.width = 3;
             ui.style_mut().spacing.button_padding.width = 5;
+            ui.style_mut().spacing.item_spacing.height = 2;
 
             if draw_keyboard(
                 ui,
