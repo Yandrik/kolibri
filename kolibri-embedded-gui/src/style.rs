@@ -80,6 +80,7 @@ pub struct Style<COL: PixelColor, DefaultCharstyle: TextRenderer<Color = COL>> {
     pub default_widget_height: u32,
     pub border_width: u32,
     pub default_font: MonoFont<'static>,
+    #[deprecated(note = "use default_font and text_color instead")]
     pub default_text_style: (DefaultCharstyle, TextStyle),
     pub spacing: Spacing,
     pub item_background_color: COL,
