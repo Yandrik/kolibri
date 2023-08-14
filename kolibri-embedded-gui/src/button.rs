@@ -4,6 +4,7 @@ use core::cmp::max;
 use core::ops::Add;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
+use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
@@ -39,10 +40,13 @@ impl Widget for Button<'_> {
         ui: &mut Ui<DRAW, COL, CST>,
     ) -> GuiResult<Response> {
         // get size
+
+        let font = ui.style().default_font;
+
         let mut text = Text::new(
             self.label,
             Point::new(0, 0),
-            ui.style().default_text_style.0.clone(),
+            MonoTextStyle::new(&font, ui.style().text_color),
         );
 
         let height = ui.style().default_widget_height;
