@@ -222,7 +222,7 @@ impl<const N: usize> SmartstateProvider<N> {
     /// Get a smartstate based on a relative position to the current position, without
     /// changing the counter.
     ///
-    /// (e.g. get_relative(1) is equivalent to peek())
+    /// (e.g. get_relative(0) is equivalent to peek(), or get_relative(-2) is equivalent to prev())
     #[inline(always)]
     pub fn get_relative(&mut self, pos: i32) -> &mut Smartstate {
         self.states
