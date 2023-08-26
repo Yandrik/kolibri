@@ -81,7 +81,7 @@ fn main() {
     // [...]
     
     // restart the counter at the start (or end) of the loop
-    smartstates.reset_counter();
+    smartstates.restart_counter();
 
     // add a smartstate to each widget
     ui.add(Label::new("Basic Example").with_font(ascii::FONT_10X20).smartstate(smartstates.next()));
