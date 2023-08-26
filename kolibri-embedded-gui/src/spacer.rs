@@ -1,12 +1,7 @@
 use crate::ui::{GuiResult, Response, Ui, Widget};
-use core::ops::Add;
 use embedded_graphics::draw_target::DrawTarget;
-use embedded_graphics::geometry::{Point, Size};
+use embedded_graphics::geometry::Size;
 use embedded_graphics::pixelcolor::PixelColor;
-use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
-use embedded_graphics::text::renderer::TextRenderer;
-use embedded_graphics::text::{Baseline, Text, TextStyleBuilder};
 
 pub struct Spacer {
     space: Size,
@@ -19,13 +14,9 @@ impl Spacer {
 }
 
 impl<'a> Widget for Spacer {
-    fn draw<
-        DRAW: DrawTarget<Color = COL>,
-        COL: PixelColor,
-        CST: TextRenderer<Color = COL> + Clone,
-    >(
+    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
-        ui: &mut Ui<DRAW, COL, CST>,
+        ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // allocate space
         let space = ui.allocate_space(self.space)?;

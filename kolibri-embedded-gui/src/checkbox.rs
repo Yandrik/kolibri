@@ -1,6 +1,6 @@
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiError, GuiResult, Interaction, Response, Ui, Widget};
-use core::cmp::{max, min};
+use core::cmp::max;
 use core::ops::{Add, Sub};
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
@@ -8,11 +8,8 @@ use embedded_graphics::image::Image;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
-use embedded_graphics::text::renderer::TextRenderer;
-use embedded_graphics::text::{Baseline, Text, TextStyleBuilder};
-use embedded_iconoir::prelude::IconoirNewIcon;
 use embedded_iconoir::prelude::*;
-use embedded_iconoir::{size12px, size18px, size24px, size32px, Icon};
+use embedded_iconoir::{size12px, size18px, size24px, size32px};
 
 pub struct Checkbox<'a> {
     checked: &'a mut bool,
@@ -34,13 +31,9 @@ impl<'a> Checkbox<'a> {
 }
 
 impl<'a> Checkbox<'a> {
-    fn draw_icon<
-        DRAW: DrawTarget<Color = COL>,
-        COL: PixelColor,
-        CST: TextRenderer<Color = COL> + Clone,
-    >(
+    fn draw_icon<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
-        ui: &mut Ui<DRAW, COL, CST>,
+        ui: &mut Ui<DRAW, COL>,
         icon: impl ImageDrawable<Color = COL>,
         area: &Rectangle,
         center_offset: Point,
@@ -58,13 +51,9 @@ impl<'a> Checkbox<'a> {
 }
 
 impl<'a> Widget for Checkbox<'a> {
-    fn draw<
-        DRAW: DrawTarget<Color = COL>,
-        COL: PixelColor,
-        CST: TextRenderer<Color = COL> + Clone,
-    >(
+    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
-        ui: &mut Ui<DRAW, COL, CST>,
+        ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // allocate space
 
@@ -88,7 +77,7 @@ impl<'a> Widget for Checkbox<'a> {
         // styles
 
         // smartstate
-        let mut prevstate = self.smartstate.clone_inner();
+        let prevstate = self.smartstate.clone_inner();
 
         let style = match iresponse.interaction {
             Interaction::Click(_) | Interaction::Drag(_) | Interaction::Release(_) => {
@@ -134,14 +123,12 @@ impl<'a> Widget for Checkbox<'a> {
 
             if *self.checked {
                 match size - padding.width {
-                    0..=18 => {
-                        (self.draw_icon(
-                            ui,
-                            size12px::actions::Check::new(ui.style().text_color),
-                            &iresponse.area,
-                            Point::new(6, 6),
-                        ))
-                    }
+                    0..=18 => self.draw_icon(
+                        ui,
+                        size12px::actions::Check::new(ui.style().text_color),
+                        &iresponse.area,
+                        Point::new(6, 6),
+                    ),
                     19..=23 => self.draw_icon(
                         ui,
                         size18px::actions::Check::new(ui.style().text_color),

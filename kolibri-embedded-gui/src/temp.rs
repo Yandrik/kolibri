@@ -23,13 +23,9 @@ impl<'a> SomeWidget<'a> {
 }
 
 impl Widget for SomeWidget<'_> {
-    fn draw<
-        DRAW: DrawTarget<Color = COL>,
-        COL: PixelColor,
-        CST: TextRenderer<Color = COL> + Clone,
-    >(
+    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
-        ui: &mut Ui<DRAW, COL, CST>,
+        ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // ... do preparation & space allocation ...
 

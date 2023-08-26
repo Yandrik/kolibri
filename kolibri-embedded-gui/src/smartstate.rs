@@ -1,5 +1,3 @@
-use core::ops::Range;
-
 pub struct Container<'a, T> {
     optional_something: Option<&'a mut T>,
 }
@@ -86,14 +84,12 @@ impl<'a, T: PartialEq> Container<'a, T> {
 /// ### Example
 ///
 /// ```rust
-/// use crate::smartstate::{Container, Smartstate};
-/// # use crate::ui::{GuiResult, Response, Ui, Widget};
+/// use kolibri_embedded_gui::smartstate::{Container, Smartstate};
+/// # use kolibri_embedded_gui::ui::{GuiResult, InternalResponse, Response, Ui, Widget};
 /// # use embedded_graphics::draw_target::DrawTarget;
 /// # use embedded_graphics::pixelcolor::PixelColor;
 /// # use embedded_graphics::primitives::PrimitiveStyleBuilder;
 /// # use embedded_graphics::text::renderer::TextRenderer;
-/// # use kolibri_embedded_gui::smartstate::{Container, Smartstate};
-/// # use kolibri_embedded_gui::ui::{GuiResult, Response, Ui, Widget};
 ///
 /// // Here's the widget that we're going to 'smartstate':
 /// struct SomeWidget<'a> {
@@ -115,10 +111,9 @@ impl<'a, T: PartialEq> Container<'a, T> {
 ///     fn draw<
 ///         DRAW: DrawTarget<Color = COL>,
 ///         COL: PixelColor,
-///         CST: TextRenderer<Color = COL> + Clone,
 ///     >(
 ///         &mut self,
-///         ui: &mut Ui<DRAW, COL, CST>,
+///         ui: &mut Ui<DRAW, COL>,
 ///     ) -> GuiResult<Response> {
 ///         // ... do preparation & space allocation ...
 ///
@@ -126,6 +121,12 @@ impl<'a, T: PartialEq> Container<'a, T> {
 ///
 ///         // Here's where the smartstate is generally used. First, we get the current ('prev') smartstate:
 ///         let prev = self.smartstate.clone_inner();
+///
+///         // ...allocate space
+///         # let iresponse = InternalResponse::empty();
+///
+///         // ... derive whether widget is "active" or not
+///         # let active = true;
 ///
 ///         // Then, we'll set a state with a unique (for this widget) id per state:
 ///         let style = if active {

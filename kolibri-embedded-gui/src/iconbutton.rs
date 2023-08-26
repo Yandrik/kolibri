@@ -1,16 +1,13 @@
 use crate::smartstate::{Container, Smartstate};
-use crate::ui::{GuiError, GuiResult, Interaction, Response, Ui, Widget};
+use crate::ui::{GuiResult, Interaction, Response, Ui, Widget};
 use core::cmp::max;
 use core::marker::PhantomData;
-use core::ops::Add;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::image::Image;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
-use embedded_graphics::text::renderer::TextRenderer;
-use embedded_graphics::text::{Baseline, Text, TextStyleBuilder};
 use embedded_iconoir::prelude::{IconoirIcon, IconoirNewIcon};
 
 pub struct IconButton<'a, ICON: IconoirIcon> {
@@ -19,7 +16,7 @@ pub struct IconButton<'a, ICON: IconoirIcon> {
 }
 
 impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
-    pub fn new(icon: ICON) -> Self {
+    pub fn new(_icon: ICON) -> Self {
         Self {
             icon: PhantomData,
             smartstate: Container::empty(),
@@ -40,13 +37,9 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
 }
 
 impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
-    fn draw<
-        DRAW: DrawTarget<Color = COL>,
-        COL: PixelColor,
-        CST: TextRenderer<Color = COL> + Clone,
-    >(
+    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
-        ui: &mut Ui<DRAW, COL, CST>,
+        ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // get size
         let icon = ICON::new(ui.style().icon_color);

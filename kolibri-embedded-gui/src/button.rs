@@ -8,8 +8,7 @@ use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
-use embedded_graphics::text::renderer::TextRenderer;
-use embedded_graphics::text::{Baseline, Text, TextStyleBuilder};
+use embedded_graphics::text::{Baseline, Text};
 
 pub struct Button<'a> {
     label: &'a str,
@@ -31,13 +30,9 @@ impl<'a> Button<'a> {
 }
 
 impl Widget for Button<'_> {
-    fn draw<
-        DRAW: DrawTarget<Color = COL>,
-        COL: PixelColor,
-        CST: TextRenderer<Color = COL> + Clone,
-    >(
+    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
-        ui: &mut Ui<DRAW, COL, CST>,
+        ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // get size
 
@@ -79,7 +74,7 @@ impl Widget for Button<'_> {
         let prevstate = self.smartstate.clone_inner();
 
         let rect_style = match iresponse.interaction {
-            (Interaction::None) => {
+            Interaction::None => {
                 self.smartstate.modify(|st| *st = Smartstate::state(1));
 
                 PrimitiveStyleBuilder::new()

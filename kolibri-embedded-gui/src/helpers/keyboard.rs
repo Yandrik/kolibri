@@ -3,7 +3,6 @@ use crate::iconbutton::IconButton;
 use crate::smartstate::SmartstateProvider;
 use crate::ui::{InternalResponse, Response, Ui};
 use embedded_graphics::prelude::*;
-use embedded_graphics::text::renderer::TextRenderer;
 use embedded_iconoir::size16px;
 
 use crate::spacer::Spacer;
@@ -517,11 +516,10 @@ impl<'a> Layout<'a> {
 pub fn draw_keyboard<
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
-    CST: TextRenderer<Color = COL> + Clone,
     const M: usize,
     const N: usize,
 >(
-    ui: &mut Ui<DRAW, COL, CST>,
+    ui: &mut Ui<DRAW, COL>,
     layout: &Layout<'_>,
     mut smartstates: Option<&mut SmartstateProvider<M>>,
     draw_num_row: bool,

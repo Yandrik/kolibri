@@ -1,6 +1,5 @@
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiError, GuiResult, Response, Ui, Widget};
-use core::marker::PhantomData;
 use core::ops::Add;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
@@ -8,9 +7,7 @@ use embedded_graphics::mono_font::MonoFont;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{PrimitiveStyle, PrimitiveStyleBuilder, Rectangle};
-use embedded_graphics::text::renderer::TextRenderer;
-use embedded_graphics::text::{Baseline, Text, TextStyleBuilder};
+use embedded_graphics::text::{Baseline, Text};
 
 pub struct Label<'a> {
     text: &'a str,
@@ -39,13 +36,9 @@ impl<'a> Label<'a> {
 }
 
 impl<'a> Widget for Label<'a> {
-    fn draw<
-        DRAW: DrawTarget<Color = COL>,
-        COL: PixelColor,
-        CST: TextRenderer<Color = COL> + Clone,
-    >(
+    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
-        ui: &mut Ui<DRAW, COL, CST>,
+        ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // get size
 

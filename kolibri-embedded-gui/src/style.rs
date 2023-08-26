@@ -1,9 +1,7 @@
 use embedded_graphics::mono_font;
-use embedded_graphics::mono_font::{MonoFont, MonoTextStyle};
+use embedded_graphics::mono_font::MonoFont;
 use embedded_graphics::pixelcolor::{PixelColor, Rgb565};
 use embedded_graphics::prelude::*;
-use embedded_graphics::text::renderer::{CharacterStyle, TextRenderer};
-use embedded_graphics::text::{Baseline, TextStyle, TextStyleBuilder};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Spacing {
@@ -14,7 +12,7 @@ pub struct Spacing {
     pub window_border_padding: Size,
 }
 
-pub fn medsize_rgb565_debug_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565>> {
+pub fn medsize_rgb565_debug_style() -> Style<Rgb565> {
     Style {
         background_color: Rgb565::BLACK,
         item_background_color: Rgb565::CSS_GRAY,
@@ -29,10 +27,6 @@ pub fn medsize_rgb565_debug_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb5
         border_width: 1,
         highlight_border_width: 1,
         default_font: mono_font::iso_8859_10::FONT_9X15,
-        default_text_style: (
-            MonoTextStyle::new(&mono_font::iso_8859_10::FONT_9X15, Rgb565::WHITE),
-            TextStyleBuilder::new().baseline(Baseline::Bottom).build(),
-        ),
         spacing: Spacing {
             item_spacing: Size::new(8, 4),
             button_padding: Size::new(2, 2),
@@ -42,7 +36,7 @@ pub fn medsize_rgb565_debug_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb5
     }
 }
 
-pub fn medsize_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565>> {
+pub fn medsize_rgb565_style() -> Style<Rgb565> {
     Style {
         background_color: Rgb565::new(0x4, 0x8, 0x4), // pretty dark gray
         item_background_color: Rgb565::new(0x2, 0x4, 0x2), // darker gray
@@ -57,10 +51,6 @@ pub fn medsize_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565>> {
         border_width: 0,
         highlight_border_width: 1,
         default_font: mono_font::iso_8859_10::FONT_9X15,
-        default_text_style: (
-            MonoTextStyle::new(&mono_font::iso_8859_10::FONT_9X15, Rgb565::WHITE),
-            TextStyleBuilder::new().baseline(Baseline::Bottom).build(),
-        ),
         spacing: Spacing {
             item_spacing: Size::new(8, 4),
             button_padding: Size::new(5, 5),
@@ -70,7 +60,7 @@ pub fn medsize_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565>> {
     }
 }
 
-pub fn medsize_light_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565>> {
+pub fn medsize_light_rgb565_style() -> Style<Rgb565> {
     Style {
         background_color: Rgb565::CSS_WHITE,
         item_background_color: Rgb565::CSS_NAVAJO_WHITE,
@@ -85,10 +75,6 @@ pub fn medsize_light_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb5
         border_width: 0,
         highlight_border_width: 1,
         default_font: mono_font::iso_8859_10::FONT_9X15,
-        default_text_style: (
-            MonoTextStyle::new(&mono_font::iso_8859_10::FONT_9X15, Rgb565::BLACK),
-            TextStyleBuilder::new().baseline(Baseline::Bottom).build(),
-        ),
         spacing: Spacing {
             item_spacing: Size::new(8, 4),
             button_padding: Size::new(5, 5),
@@ -98,7 +84,7 @@ pub fn medsize_light_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb5
     }
 }
 
-pub fn medsize_sakura_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565>> {
+pub fn medsize_sakura_rgb565_style() -> Style<Rgb565> {
     Style {
         background_color: Rgb565::CSS_PEACH_PUFF,
         item_background_color: Rgb565::CSS_LIGHT_PINK,
@@ -113,10 +99,6 @@ pub fn medsize_sakura_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb
         border_width: 0,
         highlight_border_width: 1,
         default_font: mono_font::ascii::FONT_9X15,
-        default_text_style: (
-            MonoTextStyle::new(&mono_font::ascii::FONT_9X15, Rgb565::BLACK),
-            TextStyleBuilder::new().baseline(Baseline::Bottom).build(),
-        ),
         spacing: Spacing {
             item_spacing: Size::new(8, 4),
             button_padding: Size::new(5, 5),
@@ -126,7 +108,7 @@ pub fn medsize_sakura_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb
     }
 }
 
-pub fn medsize_blue_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565>> {
+pub fn medsize_blue_rgb565_style() -> Style<Rgb565> {
     Style {
         background_color: Rgb565::CSS_MIDNIGHT_BLUE,
         item_background_color: Rgb565::CSS_BLUE,
@@ -141,10 +123,6 @@ pub fn medsize_blue_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb56
         border_width: 0,
         highlight_border_width: 1,
         default_font: mono_font::iso_8859_10::FONT_9X15,
-        default_text_style: (
-            MonoTextStyle::new(&mono_font::iso_8859_10::FONT_9X15, Rgb565::WHITE),
-            TextStyleBuilder::new().baseline(Baseline::Bottom).build(),
-        ),
         spacing: Spacing {
             item_spacing: Size::new(8, 4),
             button_padding: Size::new(5, 5),
@@ -154,7 +132,7 @@ pub fn medsize_blue_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb56
     }
 }
 
-pub fn medsize_crt_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565>> {
+pub fn medsize_crt_rgb565_style() -> Style<Rgb565> {
     Style {
         background_color: Rgb565::CSS_BLACK,
         item_background_color: Rgb565::CSS_BLACK,
@@ -169,10 +147,6 @@ pub fn medsize_crt_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565
         border_width: 1,
         highlight_border_width: 3,
         default_font: mono_font::iso_8859_10::FONT_9X15,
-        default_text_style: (
-            MonoTextStyle::new(&mono_font::iso_8859_10::FONT_9X15, Rgb565::GREEN),
-            TextStyleBuilder::new().baseline(Baseline::Bottom).build(),
-        ),
         spacing: Spacing {
             item_spacing: Size::new(8, 4),
             button_padding: Size::new(5, 5),
@@ -182,7 +156,7 @@ pub fn medsize_crt_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565
     }
 }
 
-pub fn medsize_retro_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb565>> {
+pub fn medsize_retro_rgb565_style() -> Style<Rgb565> {
     Style {
         background_color: Rgb565::CSS_WHITE,
         item_background_color: Rgb565::CSS_WHITE,
@@ -197,10 +171,6 @@ pub fn medsize_retro_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb5
         border_width: 1,
         highlight_border_width: 1,
         default_font: mono_font::ascii::FONT_9X15,
-        default_text_style: (
-            MonoTextStyle::new(&mono_font::ascii::FONT_9X15, Rgb565::BLACK),
-            TextStyleBuilder::new().baseline(Baseline::Bottom).build(),
-        ),
         spacing: Spacing {
             item_spacing: Size::new(8, 4),
             button_padding: Size::new(5, 5),
@@ -211,7 +181,7 @@ pub fn medsize_retro_rgb565_style() -> Style<Rgb565, MonoTextStyle<'static, Rgb5
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Style<COL: PixelColor, DefaultCharstyle: TextRenderer<Color = COL>> {
+pub struct Style<COL: PixelColor> {
     pub background_color: COL,
     pub border_color: COL,
     pub primary_color: COL,
@@ -220,8 +190,6 @@ pub struct Style<COL: PixelColor, DefaultCharstyle: TextRenderer<Color = COL>> {
     pub default_widget_height: u32,
     pub border_width: u32,
     pub default_font: MonoFont<'static>,
-    #[deprecated(note = "use default_font and text_color instead")]
-    pub default_text_style: (DefaultCharstyle, TextStyle),
     pub spacing: Spacing,
     pub item_background_color: COL,
     pub highlight_item_background_color: COL,

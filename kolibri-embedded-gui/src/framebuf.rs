@@ -1,6 +1,5 @@
-use core::cell::RefMut;
 use core::convert::Infallible;
-use core::ops::{DerefMut, Sub};
+use core::ops::Sub;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 use embedded_graphics::Pixel;
@@ -110,7 +109,11 @@ mod test {
         const SIZE: usize = 8;
 
         let mut data = [BinaryColor::Off; SIZE * SIZE];
-        let mut fbuf = WidgetFramebuf::new(&mut data, SIZE, SIZE);
+        let mut fbuf = WidgetFramebuf::new(
+            &mut data,
+            Size::new(SIZE as u32, SIZE as u32),
+            Point::new(0, 0),
+        );
 
         let color = BinaryColor::On;
 
@@ -146,35 +149,35 @@ mod test {
         let mut data = [BinaryColor::Off; 9]; // enugh for 3*3
 
         // crashes
-        let _fbuf = WidgetFramebuf::new(&mut data, 3, 5);
+        let mut _fbuf = WidgetFramebuf::new(&mut data, Size::new(3, 5), Point::new(0, 0));
     }
 
     #[test]
     fn test_widget_framebuf_new() {
         let mut buf = [Rgb888::BLACK; 9];
-        let framebuf = WidgetFramebuf::new(&mut buf, 3, 3);
+        let framebuf = WidgetFramebuf::new(&mut buf, Size::new(3, 3), Point::new(0, 0));
 
-        assert_eq!(framebuf.width, 3);
-        assert_eq!(framebuf.height, 3);
+        assert_eq!(framebuf.size.width, 3);
+        assert_eq!(framebuf.size.height, 3);
         assert_eq!(framebuf.len, 9);
     }
 
     #[test]
     fn test_widget_framebuf_try_new() {
         let mut buf = [Rgb888::BLACK; 9];
-        let framebuf = WidgetFramebuf::try_new(&mut buf, 3, 3);
+        let framebuf = WidgetFramebuf::try_new(&mut buf, Size::new(3, 3), Point::zero());
 
         assert!(framebuf.is_some());
         let framebuf = framebuf.unwrap();
-        assert_eq!(framebuf.width, 3);
-        assert_eq!(framebuf.height, 3);
+        assert_eq!(framebuf.size.width, 3);
+        assert_eq!(framebuf.size.height, 3);
         assert_eq!(framebuf.len, 9);
     }
 
     #[test]
     fn test_widget_framebuf_try_new_fail() {
         let mut buf = [Rgb888::BLACK; 8];
-        let framebuf = WidgetFramebuf::try_new(&mut buf, 3, 3);
+        let mut framebuf = WidgetFramebuf::try_new(&mut buf, Size::new(3, 3), Point::new(0, 0));
 
         assert!(framebuf.is_none());
     }
@@ -182,7 +185,7 @@ mod test {
     #[test]
     fn test_widget_framebuf_draw_line() {
         let mut buf = [Rgb888::BLACK; 9];
-        let mut framebuf = WidgetFramebuf::new(&mut buf, 3, 3);
+        let mut framebuf = WidgetFramebuf::new(&mut buf, Size::new(3, 3), Point::new(0, 0));
 
         let line = Line::new(Point::new(0, 0), Point::new(2, 2));
         let styled_line = line.into_styled(PrimitiveStyle::with_stroke(Rgb888::RED, 1));

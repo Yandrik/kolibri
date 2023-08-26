@@ -1,18 +1,13 @@
 use crate::smartstate::{Container, Smartstate};
-use crate::style::Style;
 use crate::ui::{GuiError, GuiResult, Response, Ui, Widget};
 use core::marker::PhantomData;
 use core::ops::Add;
 use embedded_graphics::draw_target::DrawTarget;
-use embedded_graphics::geometry::{Point, Size};
+use embedded_graphics::geometry::Point;
 use embedded_graphics::image::Image;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
-use embedded_graphics::text::renderer::{CharacterStyle, TextRenderer};
-use embedded_graphics::text::{Baseline, Text, TextStyleBuilder};
 use embedded_iconoir::prelude::*;
-use embedded_iconoir::Icon;
 
 pub struct IconWidget<'a, Ico: IconoirIcon> {
     marker: PhantomData<Ico>,
@@ -21,7 +16,7 @@ pub struct IconWidget<'a, Ico: IconoirIcon> {
 
 impl<'a, Ico: IconoirIcon> IconWidget<'a, Ico> {
     /// Create a new IconWidget. The icon color will be ignored, if it's set.
-    pub fn new(icon: Ico) -> Self {
+    pub fn new(_icon: Ico) -> Self {
         Self {
             marker: PhantomData,
             smartstate: Container::empty(),
@@ -42,13 +37,9 @@ impl<'a, Ico: IconoirIcon> IconWidget<'a, Ico> {
 }
 
 impl<Ico: IconoirIcon> Widget for IconWidget<'_, Ico> {
-    fn draw<
-        DRAW: DrawTarget<Color = COL>,
-        COL: PixelColor,
-        CST: TextRenderer<Color = COL> + Clone,
-    >(
+    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
-        ui: &mut Ui<DRAW, COL, CST>,
+        ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // find size && allocate space
         let icon = Ico::new(ui.style().icon_color);

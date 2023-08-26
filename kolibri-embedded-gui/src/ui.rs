@@ -1,23 +1,17 @@
 use crate::framebuf::WidgetFramebuf;
-use crate::spacer::Spacer;
 use crate::style::Style;
 use core::cell::UnsafeCell;
 use core::cmp::{max, min};
 use core::fmt::Debug;
 use core::ops::{Add, AddAssign, Sub};
 use embedded_graphics::draw_target::DrawTarget;
-use embedded_graphics::geometry::{Dimensions, OriginDimensions};
-use embedded_graphics::image::Image;
+use embedded_graphics::geometry::Dimensions;
 use embedded_graphics::pixelcolor::PixelColor;
-use embedded_graphics::prelude::{PixelIteratorExt, Point, Primitive, Size};
+use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{
     PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, StyledDrawable,
 };
-use embedded_graphics::text::renderer::TextRenderer;
-use embedded_graphics::text::TextStyle;
 use embedded_graphics::{Drawable, Pixel};
-use embedded_iconoir::prelude::IconoirNewIcon;
-use embedded_iconoir::{make_icon_category, Icon};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GuiError {
@@ -162,13 +156,9 @@ impl Response {
 }
 
 pub trait Widget {
-    fn draw<
-        DRAW: DrawTarget<Color = COL>,
-        COL: PixelColor,
-        CST: TextRenderer<Color = COL> + Clone,
-    >(
+    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
-        ui: &mut Ui<DRAW, COL, CST>,
+        ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response>;
 }
 
@@ -203,6 +193,7 @@ struct Placer {
     row_height: u32,
     bounds: Size,
     wrap: bool,
+    #[allow(unused)] // TODO: use in the future
     align: Align,
 }
 
@@ -219,10 +210,12 @@ impl Placer {
         }
     }
 
+    #[allow(unused)] // TODO: use in the future
     pub fn set_wrap(&mut self, wrap: bool) {
         self.wrap = wrap;
     }
 
+    #[allow(unused)] // TODO: use in the future
     pub fn set_align(&mut self, align: Align) {
         self.align = align;
     }
@@ -272,6 +265,7 @@ impl Placer {
         ))
     }
 
+    #[allow(unused)]
     fn row_size(&self) -> Size {
         Size::new(self.bounds.width, self.row_height)
     }
@@ -447,16 +441,14 @@ impl Interaction {
     }
 }
 
-pub struct Ui<'a, DRAW, COL, DefaultCharstyle>
+pub struct Ui<'a, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
-    DefaultCharstyle: TextRenderer<Color = COL> + Clone,
 {
     bounds: Rectangle,
     painter: Painter<'a, COL, DRAW>,
-    style: Style<COL, DefaultCharstyle>,
-    next_auto_id_source: u16,
+    style: Style<COL>,
     placer: Placer,
     interact: Interaction,
     /// Whether the UI was background-cleared this frame
@@ -464,11 +456,10 @@ where
 }
 
 // getters for Ui things
-impl<'a, DRAW, COL, DefaultCharstyle> Ui<'a, DRAW, COL, DefaultCharstyle>
+impl<'a, DRAW, COL> Ui<'a, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
-    DefaultCharstyle: TextRenderer<Color = COL> + Clone,
 {
     /// Get the width of the UI's placer. Note that this **isn't the entire screen width**.
     /// To get the screen width, use `get_screen_width()`.
@@ -482,17 +473,12 @@ where
     }
 }
 
-impl<'a, COL, DefaultCharstyle, DRAW> Ui<'a, DRAW, COL, DefaultCharstyle>
+impl<'a, COL, DRAW> Ui<'a, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
-    DefaultCharstyle: TextRenderer<Color = COL> + Clone,
 {
-    pub fn new(
-        drawable: &'a mut DRAW,
-        bounds: Rectangle,
-        style: Style<COL, DefaultCharstyle>,
-    ) -> Self {
+    pub fn new(drawable: &'a mut DRAW, bounds: Rectangle, style: Style<COL>) -> Self {
         // set bounds to internal bounds (apply padding)
         let bounds = Rectangle::new(
             bounds.top_left.add(Point::new(
@@ -516,14 +502,13 @@ where
             bounds,
             painter: Painter::new(drawable),
             style,
-            next_auto_id_source: 0,
             placer,
             interact: Interaction::None,
             cleared: false,
         }
     }
 
-    pub fn new_fullscreen(drawable: &'a mut DRAW, style: Style<COL, DefaultCharstyle>) -> Self {
+    pub fn new_fullscreen(drawable: &'a mut DRAW, style: Style<COL>) -> Self {
         let bounds = drawable.bounding_box();
         Ui::new(drawable, bounds, style)
     }
@@ -587,11 +572,11 @@ where
         widget.draw(self)
     }
 
-    pub fn style(&self) -> &Style<COL, DefaultCharstyle> {
+    pub fn style(&self) -> &Style<COL> {
         &self.style
     }
 
-    pub fn style_mut(&mut self) -> &mut Style<COL, DefaultCharstyle> {
+    pub fn style_mut(&mut self) -> &mut Style<COL> {
         &mut self.style
     }
 
@@ -676,11 +661,10 @@ where
 }
 
 // Clearing impls
-impl<'a, COL, DefaultCharstyle, DRAW> Ui<'a, DRAW, COL, DefaultCharstyle>
+impl<'a, COL, DRAW> Ui<'a, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
-    DefaultCharstyle: TextRenderer<Color = COL> + Clone,
 {
     /// Return whether the UI was background-cleared this frame
     pub fn cleared(&self) -> bool {
@@ -771,11 +755,10 @@ where
 }
 
 // Drawing Impl
-impl<'a, COL, DefaultCharstyle, DRAW> Ui<'a, DRAW, COL, DefaultCharstyle>
+impl<'a, COL, DRAW> Ui<'a, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
-    DefaultCharstyle: TextRenderer<Color = COL> + Clone,
 {
     pub fn set_buffer(&mut self, buffer: &'a mut [COL]) {
         self.painter.set_buffer(buffer);
@@ -801,18 +784,17 @@ where
 
 // SubUI impl
 
-impl<'a, COL, DefaultCharstyle, DRAW> Ui<'a, DRAW, COL, DefaultCharstyle>
+impl<'a, COL, DRAW> Ui<'a, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
-    DefaultCharstyle: TextRenderer<Color = COL> + Clone,
 {
     /// Create a sub-UI with the given bounds, where you can modify all values. This is useful for
     /// creating a sub-UI with a different style, or drawing to a screen area outside (or on top)
     /// of the normal UI.
     pub fn unchecked_sub_ui<F>(&mut self, bounds: Rectangle, f: F) -> GuiResult<()>
     where
-        F: FnOnce(&mut Ui<DRAW, COL, DefaultCharstyle>) -> GuiResult<()>,
+        F: FnOnce(&mut Ui<DRAW, COL>) -> GuiResult<()>,
     {
         let bounds = Rectangle::new(
             bounds.top_left.add(Point::new(
@@ -839,7 +821,6 @@ where
                 interact: self.interact,
                 placer,
                 cleared: false,
-                next_auto_id_source: 0,
             };
             (f)(&mut sub_ui)
         })?;
@@ -849,7 +830,7 @@ where
 
     pub fn sub_ui<F>(&mut self, f: F) -> GuiResult<()>
     where
-        F: FnOnce(&mut Ui<DRAW, COL, DefaultCharstyle>) -> GuiResult<()>,
+        F: FnOnce(&mut Ui<DRAW, COL>) -> GuiResult<()>,
     {
         self.painter.with_subpainter(|painter| {
             let mut sub_ui = Ui {
@@ -859,7 +840,6 @@ where
                 interact: self.interact,
                 placer: self.placer.clone(),
                 cleared: false,
-                next_auto_id_source: 0,
             };
             let res = (f)(&mut sub_ui);
 
@@ -873,7 +853,7 @@ where
 
     pub fn right_panel_ui<F>(&mut self, width: u32, allow_smaller: bool, f: F) -> GuiResult<()>
     where
-        F: FnOnce(&mut Ui<DRAW, COL, DefaultCharstyle>) -> GuiResult<()>,
+        F: FnOnce(&mut Ui<DRAW, COL>) -> GuiResult<()>,
     {
         // check bounds and remaining space of placer
         let bounds = self.placer.bounds;
@@ -906,7 +886,7 @@ where
     /// or you will get flickering.
     pub fn central_centered_panel_ui<F>(&mut self, width: u32, height: u32, f: F) -> GuiResult<()>
     where
-        F: FnOnce(&mut Ui<DRAW, COL, DefaultCharstyle>) -> GuiResult<()>,
+        F: FnOnce(&mut Ui<DRAW, COL>) -> GuiResult<()>,
     {
         let bounds = self.placer.bounds;
 
@@ -938,11 +918,10 @@ where
 
 // debug drawing impl
 
-impl<'a, COL, DefaultCharstyle, DRAW> Ui<'a, DRAW, COL, DefaultCharstyle>
+impl<'a, COL, DRAW> Ui<'a, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
-    DefaultCharstyle: TextRenderer<Color = COL> + Clone,
 {
     pub fn draw_bounds_debug(&mut self, color: COL) -> GuiResult<()> {
         let bounds = self.bounds;
