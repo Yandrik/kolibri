@@ -68,7 +68,7 @@ impl<'a> Widget for Checkbox<'a> {
     ) -> GuiResult<Response> {
         // allocate space
 
-        let size = ui.style().default_widget_height;
+        let size = ui.style().default_widget_height.max(ui.get_row_height());
         let padding = {
             // make square padding
             let pad = ui.style().spacing.default_padding;
@@ -127,13 +127,7 @@ impl<'a> Widget for Checkbox<'a> {
 
             // draw
 
-            let rect = Rectangle::new(
-                iresponse
-                    .area
-                    .top_left
-                    .add(Point::new(padding.width as i32, padding.height as i32)),
-                iresponse.area.size.saturating_sub(padding * 2),
-            );
+            let rect = Rectangle::new(iresponse.area.top_left, iresponse.area.size);
 
             ui.draw(&rect.into_styled(style.build()))
                 .map_err(|_| GuiError::DrawError(Some("Couldn't draw Checkbox")))?;
