@@ -1,7 +1,14 @@
 [package]
 name = "kolibri-embedded-gui"
-version = "0.1.0"
+version = "0.0.0-alpha.1"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Yannik Bretschneider <me@yandrik.dev>"]
+description = "embedded-graphics based GUI framework made to be as lightweight as its namesake"
+readme = "../README.md"
+repository = "https://github.com/Yandrik/kolibri"
+
+
 
 [lib]
 

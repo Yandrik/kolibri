@@ -293,7 +293,7 @@ dependencies = [
 
 [[package]]
 name = "kolibri-embedded-gui"
-version = "0.1.0"
+version = "0.0.0-alpha.1"
 dependencies = [
  "embedded-graphics",
  "embedded-graphics-simulator",
