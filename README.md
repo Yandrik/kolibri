@@ -57,7 +57,7 @@ If you want to see the full code using the `embedded-graphics-simulator`, look a
 #### Incremental Redrawing
 
 Using Kolibri's Smartstate System allows you to only redraw what's actually needed. This enables even super-slow screens
-to run at faster than the human eye can see.
+to run at framerates faster than the human eye can see.
 
 ![smartstate-example](./assets/incremental_redraw.png)
 
