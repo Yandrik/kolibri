@@ -142,8 +142,6 @@ fn main() -> Result<(), core::convert::Infallible> {
         })
             .unwrap();
         */
-        
-        
 
         /*
         ui.central_centered_panel_ui(280, 200, |ui| {
