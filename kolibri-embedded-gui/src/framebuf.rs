@@ -75,6 +75,32 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
 
         Ok(())
     }
+
+    fn fill_solid(&mut self, area: &Rectangle, color: Self::Color) -> Result<(), Self::Error> {
+        // Clamp area to drawable part of the display target
+        let drawable_area = area.intersection(&self.bounding_box());
+
+        // Draw the rectangle
+        for y in drawable_area.top_left.y as usize
+            ..=drawable_area.top_left.y as usize + drawable_area.size.height as usize
+        {
+            for x in drawable_area.top_left.x as usize
+                ..=drawable_area.top_left.x as usize + drawable_area.size.width as usize
+            {
+                let pt = Point::new(x as i32, y as i32).sub(self.position);
+                let pos = pt.y as usize * self.size.width as usize + pt.x as usize;
+                self.buf[pos as usize] = color;
+            }
+        }
+        Ok(())
+    }
+
+    fn clear(&mut self, color: Self::Color) -> Result<(), Self::Error> {
+        for i in 0..(self.size.width * self.size.height) as usize {
+            self.buf[i] = color;
+        }
+        Ok(())
+    }
 }
 
 impl<C: PixelColor> Drawable for WidgetFramebuf<'_, C> {
