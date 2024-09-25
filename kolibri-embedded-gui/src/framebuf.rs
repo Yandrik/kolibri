@@ -75,6 +75,51 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
 
         Ok(())
     }
+    fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = Self::Color>,
+    {
+        let drawable_area = area.intersection(&self.bounding_box());
+        if drawable_area.is_zero_sized() {
+            return Ok(());
+        }
+
+        let top_skip = drawable_area.top_left.y - area.top_left.y;
+        let left_skip = drawable_area.top_left.x - area.top_left.x;
+        let right_skip = area.size.width as i32 - (left_skip + drawable_area.size.width as i32);
+        // let bottom_skip = area.size.height as i32 - (top_skip + drawable_area.size.height as i32);
+
+        let mut color_iter = colors.into_iter();
+
+        // skip all un-drawable rows
+        for _ in 0..top_skip {
+            for _ in 0..drawable_area.size.width as usize {
+                color_iter.next();
+            }
+        }
+        for x in 0..drawable_area.size.height as usize {
+            for _ in 0..left_skip {
+                color_iter.next();
+                // skip all left
+            }
+            for y in 0..drawable_area.size.width as usize {
+                let pt = Point::new(x as i32, y as i32).sub(self.position);
+                let pos = pt.y as usize * self.size.width as usize + pt.x as usize;
+                if pos < self.len {
+                    match color_iter.next() {
+                        Some(color) => self.buf[pos as usize] = color,
+                        None => return Ok(()),
+                    }
+                }
+            }
+            for _ in 0..right_skip {
+                color_iter.next();
+                // skip all right
+            }
+        }
+
+        Ok(())
+    }
 
     fn fill_solid(&mut self, area: &Rectangle, color: Self::Color) -> Result<(), Self::Error> {
         // Clamp area to drawable part of the display target
@@ -96,9 +141,7 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
     }
 
     fn clear(&mut self, color: Self::Color) -> Result<(), Self::Error> {
-        for i in 0..(self.size.width * self.size.height) as usize {
-            self.buf[i] = color;
-        }
+        self.buf[0..(self.size.width * self.size.height) as usize].fill(color);
         Ok(())
     }
 }
