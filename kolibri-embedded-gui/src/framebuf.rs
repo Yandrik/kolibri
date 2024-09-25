@@ -75,6 +75,7 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
 
         Ok(())
     }
+
     fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), Self::Error>
     where
         I: IntoIterator<Item = Self::Color>,
@@ -93,7 +94,7 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
 
         // skip all un-drawable rows
         for _ in 0..top_skip {
-            for _ in 0..drawable_area.size.width as usize {
+            for _ in 0..area.size.width as usize {
                 color_iter.next();
             }
         }
