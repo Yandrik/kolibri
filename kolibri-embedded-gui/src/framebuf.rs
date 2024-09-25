@@ -58,7 +58,7 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
 
     fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
     where
-        I: IntoIterator<Item = Pixel<Self::Color>>,
+        I: IntoIterator<Item=Pixel<Self::Color>>,
     {
         for pixel in pixels {
             let pt = pixel.0.sub(self.position);
@@ -78,7 +78,7 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
 
     fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), Self::Error>
     where
-        I: IntoIterator<Item = Self::Color>,
+        I: IntoIterator<Item=Self::Color>,
     {
         let drawable_area = area.intersection(&self.bounding_box());
         if drawable_area.is_zero_sized() {
@@ -92,25 +92,26 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
 
         let mut color_iter = colors.into_iter();
 
+        let offset = drawable_area.top_left - self.position;
+
         // skip all un-drawable rows
         for _ in 0..top_skip {
             for _ in 0..area.size.width as usize {
                 color_iter.next();
             }
         }
-        for x in 0..drawable_area.size.height as usize {
+        for y in drawable_area.top_left.y as usize..
+            drawable_area.top_left.y as usize + drawable_area.size.height as usize {
             for _ in 0..left_skip {
                 color_iter.next();
                 // skip all left
             }
-            for y in 0..drawable_area.size.width as usize {
-                let pt = Point::new(x as i32, y as i32).sub(self.position);
-                let pos = pt.y as usize * self.size.width as usize + pt.x as usize;
-                if pos < self.len {
-                    match color_iter.next() {
-                        Some(color) => self.buf[pos as usize] = color,
-                        None => return Ok(()),
-                    }
+            for x in drawable_area.top_left.x as usize
+                ..drawable_area.top_left.x as usize + drawable_area.size.width as usize {
+                let pos = (y as i32 - self.position.y) as usize * self.size.width as usize + (x as i32 - self.position.x) as usize;
+                match color_iter.next() {
+                    Some(color) => self.buf[pos as usize] = color,
+                    None => return Ok(()),
                 }
             }
             for _ in 0..right_skip {
@@ -127,14 +128,13 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
         let drawable_area = area.intersection(&self.bounding_box());
 
         // Draw the rectangle
-        for y in drawable_area.top_left.y as usize
-            ..=drawable_area.top_left.y as usize + drawable_area.size.height as usize
+        for y in drawable_area.top_left.y as usize..
+            drawable_area.top_left.y as usize + drawable_area.size.height as usize
         {
             for x in drawable_area.top_left.x as usize
-                ..=drawable_area.top_left.x as usize + drawable_area.size.width as usize
+                ..drawable_area.top_left.x as usize + drawable_area.size.width as usize
             {
-                let pt = Point::new(x as i32, y as i32).sub(self.position);
-                let pos = pt.y as usize * self.size.width as usize + pt.x as usize;
+                let pos = (y as i32 - self.position.y) as usize * self.size.width as usize + (x as i32 - self.position.x) as usize;
                 self.buf[pos as usize] = color;
             }
         }
@@ -153,7 +153,7 @@ impl<C: PixelColor> Drawable for WidgetFramebuf<'_, C> {
 
     fn draw<D>(&self, target: &mut D) -> Result<Self::Output, D::Error>
     where
-        D: DrawTarget<Color = Self::Color>,
+        D: DrawTarget<Color=Self::Color>,
     {
         target.fill_contiguous(
             &Rectangle::new(self.position, self.size),
@@ -277,13 +277,23 @@ mod test {
             Point::new(0, 0),
         );
 
-        let colors = [BinaryColor::On; 16];
+        let colors = [
+            BinaryColor::On, BinaryColor::On, BinaryColor::On, BinaryColor::On,
+            BinaryColor::Off, BinaryColor::Off, BinaryColor::Off, BinaryColor::Off,
+            BinaryColor::On, BinaryColor::On, BinaryColor::On, BinaryColor::On,
+            BinaryColor::Off, BinaryColor::Off, BinaryColor::Off, BinaryColor::Off,
+        ];
         let area = Rectangle::new(Point::new(2, 2), Size::new(4, 4));
 
         fbuf.fill_contiguous(&area, colors.iter().cloned()).unwrap();
 
         let mut expected = MockDisplay::new();
-        expected.fill_solid(&area, BinaryColor::On).unwrap();
+        expected.set_allow_overdraw(true);
+        expected.fill_solid(&Rectangle::new(Point::zero(), Size::new(SIZE as u32, SIZE as u32)), BinaryColor::Off).unwrap();
+        expected.fill_solid(&Rectangle::new(Point::new(2, 2), Size::new(4, 1)), BinaryColor::On).unwrap();
+        expected.fill_solid(&Rectangle::new(Point::new(2, 3), Size::new(4, 1)), BinaryColor::Off).unwrap();
+        expected.fill_solid(&Rectangle::new(Point::new(2, 4), Size::new(4, 1)), BinaryColor::On).unwrap();
+        expected.fill_solid(&Rectangle::new(Point::new(2, 5), Size::new(4, 1)), BinaryColor::Off).unwrap();
 
         let mut actual = MockDisplay::new();
         actual
@@ -297,19 +307,86 @@ mod test {
     }
 
     #[test]
+    fn test_fill_contiguous_clipped() {
+        let mut data = [BinaryColor::Off; 9];
+        let mut fbuf = WidgetFramebuf::new(&mut data, Size::new(3, 3), Point::new(0, 0));
+
+        let colors = [
+            BinaryColor::On, BinaryColor::Off, BinaryColor::On, BinaryColor::Off, BinaryColor::On,
+            BinaryColor::On, BinaryColor::On, BinaryColor::Off, BinaryColor::Off, BinaryColor::On,
+            BinaryColor::On, BinaryColor::Off, BinaryColor::On, BinaryColor::On, BinaryColor::On,
+            BinaryColor::On, BinaryColor::Off, BinaryColor::On, BinaryColor::Off, BinaryColor::On,
+        ];
+        let area = Rectangle::new(Point::new(-1, -1), Size::new(5, 5));
+
+        fbuf.fill_contiguous(&area, colors.iter().cloned()).unwrap();
+
+        let expected = [
+            BinaryColor::On, BinaryColor::Off, BinaryColor::Off,
+            BinaryColor::Off, BinaryColor::On, BinaryColor::On,
+            BinaryColor::Off, BinaryColor::On, BinaryColor::Off,
+        ];
+
+        assert_eq!(data, expected);
+    }
+
+
+    #[test]
+    fn test_fill_contiguous_clipped_2() {
+        let mut data = [BinaryColor::Off; 12];
+        let mut fbuf = WidgetFramebuf::new(&mut data, Size::new(4, 3), Point::new(2, 1));
+
+        let colors = [
+            BinaryColor::On, BinaryColor::Off, BinaryColor::On, BinaryColor::Off, BinaryColor::On, BinaryColor::On,
+            BinaryColor::On, BinaryColor::Off, BinaryColor::Off, BinaryColor::On, BinaryColor::On, BinaryColor::Off,
+            BinaryColor::On, BinaryColor::On, BinaryColor::On, BinaryColor::On, BinaryColor::Off, BinaryColor::On,
+        ];
+        let area = Rectangle::new(Point::new(1, 0), Size::new(6, 3));
+
+        fbuf.fill_contiguous(&area, colors.iter().cloned()).unwrap();
+
+        let expected = [
+            BinaryColor::Off, BinaryColor::Off, BinaryColor::On, BinaryColor::On,
+            BinaryColor::On, BinaryColor::On, BinaryColor::On, BinaryColor::Off,
+            BinaryColor::Off, BinaryColor::Off, BinaryColor::Off, BinaryColor::Off
+        ];
+
+        assert_eq!(data, expected);
+    }
+
+
+    #[test]
+    fn test_fill_contiguous_short_iterator() {
+        let mut data = [BinaryColor::Off; 9];
+        let mut fbuf = WidgetFramebuf::new(&mut data, Size::new(3, 3), Point::new(0, 0));
+
+        let colors = [BinaryColor::On; 5];
+        let area = Rectangle::new(Point::new(0, 0), Size::new(3, 3));
+
+        fbuf.fill_contiguous(&area, colors.iter().cloned()).unwrap();
+
+        let expected = [
+            BinaryColor::On, BinaryColor::On, BinaryColor::On,
+            BinaryColor::On, BinaryColor::On, BinaryColor::Off,
+            BinaryColor::Off, BinaryColor::Off, BinaryColor::Off,
+        ];
+
+        assert_eq!(data, expected);
+    }
+
+
+    #[test]
     fn test_fill_solid() {
         const SIZE: usize = 8;
         let mut data = [BinaryColor::Off; SIZE * SIZE];
         let mut fbuf = WidgetFramebuf::new(
             &mut data,
             Size::new(SIZE as u32, SIZE as u32),
-            Point::new(1, 1),
+            Point::new(0, 0),
         );
 
         let area = Rectangle::new(Point::new(1, 1), Size::new(6, 6));
-        println!("{:?}", fbuf.buf);
         fbuf.fill_solid(&area, BinaryColor::On).unwrap();
-        println!("{:?}", fbuf.buf);
 
         let mut expected = MockDisplay::new();
         expected.set_allow_overdraw(true);
@@ -330,6 +407,43 @@ mod test {
             .unwrap();
 
         actual.assert_eq(&expected);
+    }
+
+    #[test]
+    fn test_fill_solid_clipped() {
+        let mut data = [BinaryColor::Off; 9];
+        let mut fbuf = WidgetFramebuf::new(&mut data, Size::new(3, 3), Point::new(0, 0));
+
+        let area = Rectangle::new(Point::new(-1, -1), Size::new(5, 5));
+
+        fbuf.fill_solid(&area, BinaryColor::On).unwrap();
+
+        let expected = [
+            BinaryColor::On, BinaryColor::On, BinaryColor::On,
+            BinaryColor::On, BinaryColor::On, BinaryColor::On,
+            BinaryColor::On, BinaryColor::On, BinaryColor::On,
+        ];
+
+        assert_eq!(data, expected);
+    }
+
+
+    #[test]
+    fn test_fill_solid_clipped_2() {
+        let mut data = [BinaryColor::Off; 12];
+        let mut fbuf = WidgetFramebuf::new(&mut data, Size::new(4, 3), Point::new(2, 1));
+
+        let area = Rectangle::new(Point::new(1, 0), Size::new(3, 3));
+
+        fbuf.fill_solid(&area, BinaryColor::On).unwrap();
+
+        let expected = [
+            BinaryColor::On, BinaryColor::On, BinaryColor::Off, BinaryColor::Off,
+            BinaryColor::On, BinaryColor::On, BinaryColor::Off, BinaryColor::Off,
+            BinaryColor::Off, BinaryColor::Off, BinaryColor::Off, BinaryColor::Off
+        ];
+
+        assert_eq!(data, expected);
     }
 
     #[test]
@@ -363,3 +477,4 @@ mod test {
         actual.assert_eq(&expected);
     }
 }
+
