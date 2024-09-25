@@ -266,4 +266,100 @@ mod test {
         assert_eq!(buf[4], Rgb888::RED);
         assert_eq!(buf[8], Rgb888::RED);
     }
+
+    #[test]
+    fn test_fill_contiguous() {
+        const SIZE: usize = 8;
+        let mut data = [BinaryColor::Off; SIZE * SIZE];
+        let mut fbuf = WidgetFramebuf::new(
+            &mut data,
+            Size::new(SIZE as u32, SIZE as u32),
+            Point::new(0, 0),
+        );
+
+        let colors = [BinaryColor::On; 16];
+        let area = Rectangle::new(Point::new(2, 2), Size::new(4, 4));
+
+        fbuf.fill_contiguous(&area, colors.iter().cloned()).unwrap();
+
+        let mut expected = MockDisplay::new();
+        expected.fill_solid(&area, BinaryColor::On).unwrap();
+
+        let mut actual = MockDisplay::new();
+        actual
+            .fill_contiguous(
+                &Rectangle::new(Point::zero(), Size::new(SIZE as u32, SIZE as u32)),
+                data,
+            )
+            .unwrap();
+
+        actual.assert_eq(&expected);
+    }
+
+    #[test]
+    fn test_fill_solid() {
+        const SIZE: usize = 8;
+        let mut data = [BinaryColor::Off; SIZE * SIZE];
+        let mut fbuf = WidgetFramebuf::new(
+            &mut data,
+            Size::new(SIZE as u32, SIZE as u32),
+            Point::new(1, 1),
+        );
+
+        let area = Rectangle::new(Point::new(1, 1), Size::new(6, 6));
+        println!("{:?}", fbuf.buf);
+        fbuf.fill_solid(&area, BinaryColor::On).unwrap();
+        println!("{:?}", fbuf.buf);
+
+        let mut expected = MockDisplay::new();
+        expected.set_allow_overdraw(true);
+        expected
+            .fill_solid(
+                &Rectangle::new(Point::zero(), Size::new(SIZE as u32, SIZE as u32)),
+                BinaryColor::Off,
+            )
+            .unwrap();
+        expected.fill_solid(&area, BinaryColor::On).unwrap();
+
+        let mut actual = MockDisplay::new();
+        actual
+            .fill_contiguous(
+                &Rectangle::new(Point::zero(), Size::new(SIZE as u32, SIZE as u32)),
+                data,
+            )
+            .unwrap();
+
+        actual.assert_eq(&expected);
+    }
+
+    #[test]
+    fn test_clear() {
+        const SIZE: usize = 8;
+        let mut data = [BinaryColor::On; SIZE * SIZE];
+        let mut fbuf = WidgetFramebuf::new(
+            &mut data,
+            Size::new(SIZE as u32, SIZE as u32),
+            Point::new(0, 0),
+        );
+
+        fbuf.clear(BinaryColor::Off).unwrap();
+
+        let mut expected = MockDisplay::new();
+        expected
+            .fill_solid(
+                &Rectangle::new(Point::zero(), Size::new(SIZE as u32, SIZE as u32)),
+                BinaryColor::Off,
+            )
+            .unwrap();
+
+        let mut actual = MockDisplay::new();
+        actual
+            .fill_contiguous(
+                &Rectangle::new(Point::zero(), Size::new(SIZE as u32, SIZE as u32)),
+                data,
+            )
+            .unwrap();
+
+        actual.assert_eq(&expected);
+    }
 }
