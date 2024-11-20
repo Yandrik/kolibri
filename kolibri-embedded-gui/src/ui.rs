@@ -234,7 +234,15 @@ impl Placer {
             return Err(GuiError::NoSpaceLeft);
         }
 
-        // check bounds
+        // set bounds (temporary) TODO: do this PROPERLY!
+        if let Align(HorizontalAlign::Center, _) = self.align {
+            if self.pos.x as u32 + size.width > self.bounds.width {
+                return Err(GuiError::NoSpaceLeft);
+            }
+            // Calculate the right x-coordinate to center the widget between self.pos.x and self.bounds.width
+            // (self.bounds.width + self.pos.x as u32 - size.width) / 2
+            self.pos.x = ((self.bounds.width + self.pos.x as u32 - size.width) / 2) as i32;
+        };
         let right = size.width + self.pos.x as u32;
         let mut bottom = max(self.row_height, size.height) + self.pos.y as u32;
         if !self.check_bounds(Size::new(right, bottom)) {
@@ -543,6 +551,20 @@ where
         // create new row
         self.new_row();
 
+        resp
+    }
+
+    pub fn add_centered(&mut self, widget: impl Widget) -> Response {
+        // draw widget. TODO: Add new auto ID
+        let align = self.placer.align;
+        self.placer.align = Align(HorizontalAlign::Center, align.1);
+        let resp = self.add_raw(widget).unwrap_or_else(|e| {
+            // panic!("Failed to add widget to UI: {:?}", e);
+            Response::from_error(e)
+        });
+        self.placer.align = align;
+
+        self.new_row();
         resp
     }
 
