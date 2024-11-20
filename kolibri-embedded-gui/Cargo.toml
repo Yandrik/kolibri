@@ -8,6 +8,8 @@ description = "embedded-graphics based GUI framework made to be as lightweight a
 readme = "../README.md"
 repository = "https://github.com/Yandrik/kolibri"
 
+[features]
+std-debug = []
 
 
 [lib]

@@ -1,4 +1,4 @@
-#![cfg_attr(not(test), no_std)]
+#![cfg_attr(not(test), cfg_attr(not(feature = "std-debug"), no_std))]
 
 pub mod button;
 pub mod checkbox;
