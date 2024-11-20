@@ -13,8 +13,9 @@ use kolibri_embedded_gui::checkbox::Checkbox;
 use kolibri_embedded_gui::icon::IconWidget;
 use kolibri_embedded_gui::iconbutton::IconButton;
 use kolibri_embedded_gui::icons::{size12px, size24px, size32px};
-use kolibri_embedded_gui::label::Label;
+use kolibri_embedded_gui::label::{HashLabel, Hasher, Label};
 use kolibri_embedded_gui::prelude::*;
+use kolibri_embedded_gui::slider::Slider;
 use kolibri_embedded_gui::smartstate::{Smartstate, SmartstateProvider};
 use kolibri_embedded_gui::spacer::Spacer;
 use kolibri_embedded_gui::style::{medsize_rgb565_debug_style, medsize_rgb565_style};
@@ -54,10 +55,14 @@ fn main() -> Result<(), core::convert::Infallible> {
 
     // alloc buffer
     let mut buffer = [Rgb565::new(0, 0, 0); 100 * 100];
+    let hasher = Hasher::new();
+
+    let mut slider_val = 0;
 
     'outer: loop {
         let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
-        ui.set_buffer(&mut buffer);
+        // ui.draw_widget_bounds_debug(Rgb565::RED);
+        // ui.set_buffer(&mut buffer);
         smartstates.restart_counter();
 
         match (last_down, mouse_down, location) {
@@ -83,11 +88,15 @@ fn main() -> Result<(), core::convert::Infallible> {
         {
             i = i.saturating_add(1);
             println!("Clicked! i: {}", i);
-            smartstates.peek().force_redraw();
+            // smartstates.peek().force_redraw();
         }
-        ui.add_horizontal(
-            Label::new(format!("Clicked {} times", i).as_ref()).smartstate(smartstates.next()),
-        );
+        ui.add_horizontal(HashLabel::new(
+            format!("Clicked {} times", i).as_ref(),
+            smartstates.next(),
+            &hasher,
+        ));
+
+        // println!("label smartstate: {:?}", smartstates.current());
 
         ui.clear_row_to_end().unwrap();
         ui.new_row();
@@ -95,6 +104,19 @@ fn main() -> Result<(), core::convert::Infallible> {
         ui.expand_row_height(20);
         ui.add_horizontal(Button::new("This is creative!").smartstate(smartstates.next()));
         ui.add(IconWidget::<size24px::layout::CornerBottomLeft>::new_from_type());
+        ui.add(IconButton::new(size24px::actions::AddCircle));
+        ui.add(IconButton::new(size24px::actions::AddCircle).label("Add 2"));
+        if ui
+            .add(
+                Slider::new(&mut slider_val, -10..=10)
+                    .label("Fancy Slider")
+                    .step_size(5)
+                    .smartstate(smartstates.next()),
+            )
+            .changed()
+        {
+            println!("Slider value: {}", slider_val);
+        }
 
         /*
         ui.right_panel_ui(200, true, |ui| {
