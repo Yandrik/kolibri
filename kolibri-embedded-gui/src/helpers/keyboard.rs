@@ -537,8 +537,8 @@ pub fn draw_keyboard<
         .map(|smp| smp.next())
         .map(|sm| {
             // if the state is not the same as open, redraw (=> open has changed)
-            let redraw = !sm.is_state(*open as u16);
-            sm.set_state(*open as u16);
+            let redraw = !sm.is_state(*open as u32);
+            sm.set_state(*open as u32);
             redraw
         })
         .unwrap_or(true);
