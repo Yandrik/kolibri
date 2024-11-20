@@ -1,5 +1,6 @@
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiError, GuiResult, Response, Ui, Widget};
+use core::hash::BuildHasher;
 use core::hash::Hash;
 use core::ops::Add;
 use embedded_graphics::draw_target::DrawTarget;
@@ -10,7 +11,6 @@ use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::text::{Baseline, Text};
 use foldhash::fast::RandomState;
-use std::hash::BuildHasher;
 
 pub struct Label<'a> {
     text: &'a str,
