@@ -11,8 +11,9 @@ pub mod spacer;
 pub mod style;
 // mod temp;
 pub mod framebuf;
-pub mod iconbutton;
 pub mod helpers;
+pub mod iconbutton;
+pub mod slider;
 pub mod ui;
 
 pub mod prelude {
