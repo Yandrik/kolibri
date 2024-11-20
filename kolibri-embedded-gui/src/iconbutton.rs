@@ -57,12 +57,9 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
         let padding = ui.style().spacing.button_padding;
         let border = ui.style().border_width;
 
-        let mut height = max(
-            max(ui.style().default_widget_height, ui.get_row_height()),
-            icon.bounding_box().size.height + 2 * padding.height + 2 * border,
-        );
+        let mut min_height = icon.bounding_box().size.height + 2 * padding.height + 2 * border;
 
-        let mut width = height;
+        let mut width = min_height;
 
         let font = ui.style().default_font;
 
@@ -74,12 +71,16 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
             );
             text.text_style.alignment = Alignment::Center;
             text.text_style.baseline = Baseline::Top;
-            height += padding.height + text.bounding_box().size.height;
+            min_height += padding.height + text.bounding_box().size.height;
             width = width.max(text.bounding_box().size.width + 2 * padding.width + 2 * border);
             Some(text)
         } else {
             None
         };
+        let mut height = max(
+            max(ui.style().default_widget_height, ui.get_row_height()),
+            min_height,
+        );
 
         let size = Size::new(width, height);
 
