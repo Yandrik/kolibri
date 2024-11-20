@@ -453,6 +453,7 @@ where
     interact: Interaction,
     /// Whether the UI was background-cleared this frame
     cleared: bool,
+    debug_color: Option<COL>,
 }
 
 // getters for Ui things
@@ -505,6 +506,7 @@ where
             placer,
             interact: Interaction::None,
             cleared: false,
+            debug_color: None,
         }
     }
 
@@ -560,7 +562,20 @@ where
     }
 
     pub fn add_raw(&mut self, mut widget: impl Widget) -> GuiResult<Response> {
-        widget.draw(self)
+        let res = widget.draw(self);
+        if let (Ok(res), Some(debug_color)) = (&res, self.debug_color) {
+            res.internal
+                .area
+                .draw_styled(
+                    &PrimitiveStyleBuilder::new()
+                        .stroke_color(debug_color)
+                        .stroke_width(1)
+                        .build(),
+                    &mut self.painter,
+                )
+                .ok();
+        }
+        res
     }
 
     pub fn style(&self) -> &Style<COL> {
@@ -812,6 +827,7 @@ where
                 interact: self.interact,
                 placer,
                 cleared: false,
+                debug_color: self.debug_color,
             };
             (f)(&mut sub_ui)
         })?;
@@ -831,6 +847,7 @@ where
                 interact: self.interact,
                 placer: self.placer.clone(),
                 cleared: false,
+                debug_color: self.debug_color,
             };
             let res = (f)(&mut sub_ui);
 
@@ -925,5 +942,9 @@ where
                 &mut self.painter,
             )
             .map_err(|_| GuiError::DrawError(Some("Couldn't draw bounds")))
+    }
+
+    pub fn draw_widget_bounds_debug(&mut self, color: COL) {
+        self.debug_color = Some(color);
     }
 }
