@@ -518,13 +518,10 @@ where
     }
 
     pub fn add_and_clear_col_remainder(&mut self, widget: impl Widget, clear: bool) -> Response {
-        let resp = match self.add_raw(widget) {
-            Ok(resp) => resp,
-            Err(e) => {
-                // panic!("Failed to add widget to UI: {:?}", e);
-                Response::from_error(e)
-            }
-        };
+        let resp = self.add_raw(widget).unwrap_or_else(|e| {
+            // panic!("Failed to add widget to UI: {:?}", e);
+            Response::from_error(e)
+        });
         if clear {
             self.clear_row_to_end().ok();
         }
@@ -536,13 +533,10 @@ where
 
     pub fn add(&mut self, widget: impl Widget) -> Response {
         // draw widget. TODO: Add new auto ID
-        let resp = match self.add_raw(widget) {
-            Ok(resp) => resp,
-            Err(e) => {
-                // panic!("Failed to add widget to UI: {:?}", e);
-                Response::from_error(e)
-            }
-        };
+        let resp = self.add_raw(widget).unwrap_or_else(|e| {
+            // panic!("Failed to add widget to UI: {:?}", e);
+            Response::from_error(e)
+        });
 
         // create new row
         self.new_row();
@@ -553,13 +547,10 @@ where
     /// Add a widget horizontally to the layout to the current row
     pub fn add_horizontal(&mut self, widget: impl Widget) -> Response {
         // add widget (auto-expands row height potentially
-        let resp = match self.add_raw(widget) {
-            Ok(resp) => resp,
-            Err(e) => {
-                // panic!("Failed to add widget to UI: {:?}", e);
-                Response::from_error(e)
-            }
-        };
+        let resp = self.add_raw(widget).unwrap_or_else(|e| {
+            // panic!("Failed to add widget to UI: {:?}", e);
+            Response::from_error(e)
+        });
         // ignore space alignment errors (those are "fine". If wrapping is enabled,
         // the next widget will be placed on the next row, without any space in between.)
         self.allocate_space_no_wrap(self.style().spacing.item_spacing)
