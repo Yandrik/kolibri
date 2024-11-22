@@ -165,9 +165,14 @@ impl Widget for Slider<'_> {
 
         let style = ui.style();
         let line_style = PrimitiveStyleBuilder::new()
-            .stroke_color(style.highlight_item_background_color)
-            .stroke_width(slider_thickness)
-            .fill_color(style.highlight_item_background_color)
+            .stroke_color(style.border_color)
+            .stroke_width(2)
+            .fill_color(style.primary_color)
+            .build();
+        let mut slider_knob_style = PrimitiveStyleBuilder::new()
+            .stroke_color(style.border_color)
+            .stroke_width(1.max(style.border_width))
+            .fill_color(style.background_color)
             .build();
         let old_slider_knob_style = PrimitiveStyleBuilder::new()
             .stroke_color(style.background_color)
@@ -262,19 +267,32 @@ impl Widget for Slider<'_> {
 
         // styles and smartstate
 
-        if !self
-            .smartstate
-            .eq_inner(&Smartstate::state(*self.value as u32))
-        {
+        let interact_val: u16 = match iresponse.interaction {
+            Interaction::Click(_) | Interaction::Drag(_) => {
+                slider_knob_style.fill_color = Some(style.primary_color);
+                2
+            }
+            Interaction::Hover(_) => {
+                slider_knob_style.fill_color = Some(style.highlight_item_background_color);
+                1
+            }
+            _ => {
+                slider_knob_style.fill_color = Some(style.item_background_color);
+                0
+            }
+        };
+        let state_val = (*self.value as u16) as u32 | (interact_val as u32) << 16;
+
+        if !self.smartstate.eq_inner(&Smartstate::state(state_val)) {
             ui.start_drawing(&iresponse.area);
 
             if old_slider_knob_pos != slider_knob_pos {
                 ui.draw(&mut old_slider_knob.into_styled(old_slider_knob_style))
                     .ok();
             }
-            ui.draw(&mut slider_line.into_styled(line_style.clone()))
+            ui.draw(&mut slider_line.into_styled(line_style)).ok();
+            ui.draw(&mut slider_knob.into_styled(slider_knob_style))
                 .ok();
-            ui.draw(&mut slider_knob.into_styled(line_style)).ok();
             // ui.draw(&icon_img).ok();
             if let Some(text) = text.as_mut() {
                 ui.draw(text).unwrap();
@@ -284,7 +302,7 @@ impl Widget for Slider<'_> {
         }
 
         self.smartstate
-            .modify(|s| *s = Smartstate::state(*self.value as u32));
+            .modify(|s| *s = Smartstate::state(state_val));
 
         Ok(Response::new(iresponse).set_changed(old_val != *self.value)) //.set_clicked(click).set_down(down))
     }
