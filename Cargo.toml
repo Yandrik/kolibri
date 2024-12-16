@@ -35,9 +35,6 @@ name = "basic-example-incremental-redraw"
 name = "theming"
 
 [[example]]
-name = "experimenting"
-
-[[example]]
 name = "motion-scheduler"
 
 [[example]]

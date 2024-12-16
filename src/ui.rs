@@ -294,7 +294,7 @@ impl Placer {
 
     /// Check whether a size is in bounds of the widget (<= widget_size)
     fn check_bounds(&self, pos: Size) -> bool {
-        pos.width as u32 <= self.bounds.width && pos.height <= self.bounds.height
+        pos.width <= self.bounds.width && pos.height <= self.bounds.height
     }
 }
 
@@ -318,7 +318,7 @@ impl<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> Painter<'a, COL, DRAW> 
     }
 
     fn start_drawing(&mut self, area: &Rectangle) {
-        if let Some(_) = self.framebuf {
+        if self.framebuf.is_some() {
             panic!("Framebuffer is already in use!");
         }
 
@@ -372,7 +372,7 @@ impl<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> Painter<'a, COL, DRAW> 
         let target: &'b mut DRAW = self.target;
         let mut subpainter = Painter::new(target);
 
-        if matches!(self.framebuf, Some(_)) {
+        if self.framebuf.is_some() {
             panic!("Cannot create subpainter when framebuf is in use!");
         }
 
@@ -408,7 +408,7 @@ impl<COL: PixelColor, DRAW: DrawTarget<Color = COL, Error = ERR>, ERR> DrawTarge
 }
 
 /// Interaction with the UI
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum Interaction {
     /// A click event (mouse, touch, etc. down)
     Click(Point),
@@ -420,13 +420,8 @@ pub enum Interaction {
     /// Generally not applicable to touch screens.
     Hover(Point),
     /// No interaction
+    #[default]
     None,
-}
-
-impl Default for Interaction {
-    fn default() -> Self {
-        Interaction::None
-    }
 }
 
 impl Interaction {
@@ -456,7 +451,7 @@ where
 }
 
 // getters for Ui things
-impl<'a, DRAW, COL> Ui<'a, DRAW, COL>
+impl<DRAW, COL> Ui<'_, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
@@ -624,8 +619,7 @@ where
 
     /// For now, only stub method.
     pub fn allocate_exact_size(&mut self, desired_size: Size) -> GuiResult<InternalResponse> {
-        let allocated = self.allocate_space(desired_size);
-        allocated
+        self.allocate_space(desired_size)
     }
 
     pub fn allocate_space(&mut self, desired_size: Size) -> GuiResult<InternalResponse> {
@@ -661,7 +655,7 @@ where
 }
 
 // Clearing impls
-impl<'a, COL, DRAW> Ui<'a, DRAW, COL>
+impl<COL, DRAW> Ui<'_, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
@@ -784,7 +778,7 @@ where
 
 // SubUI impl
 
-impl<'a, COL, DRAW> Ui<'a, DRAW, COL>
+impl<COL, DRAW> Ui<'_, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
@@ -817,7 +811,7 @@ where
             let mut sub_ui = Ui {
                 painter,
                 bounds,
-                style: self.style.clone(),
+                style: self.style,
                 interact: self.interact,
                 placer,
                 cleared: false,
@@ -836,7 +830,7 @@ where
             let mut sub_ui = Ui {
                 painter,
                 bounds: self.bounds,
-                style: self.style.clone(),
+                style: self.style,
                 interact: self.interact,
                 placer: self.placer.clone(),
                 cleared: false,
@@ -918,7 +912,7 @@ where
 
 // debug drawing impl
 
-impl<'a, COL, DRAW> Ui<'a, DRAW, COL>
+impl<COL, DRAW> Ui<'_, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,

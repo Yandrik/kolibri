@@ -2,26 +2,19 @@ use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::Dimensions;
 use embedded_graphics::geometry::Size;
 use embedded_graphics::image::Image;
-use embedded_graphics::mono_font::{ascii, MonoTextStyle};
+use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::{PixelColor, Rgb565, RgbColor};
 use embedded_graphics::prelude::Point;
 use embedded_graphics::primitives::{Circle, PrimitiveStyle, StyledDrawable};
-use embedded_graphics::text::renderer::TextRenderer;
 use embedded_graphics::text::Text;
 use embedded_graphics_simulator::sdl2::MouseButton;
 use embedded_graphics_simulator::{
-    BinaryColorTheme, OutputSettingsBuilder, SimulatorDisplay, SimulatorEvent, Window,
+    OutputSettingsBuilder, SimulatorDisplay, SimulatorEvent, Window,
 };
-use kolibri_embedded_gui::button::Button;
-use kolibri_embedded_gui::checkbox::Checkbox;
-use kolibri_embedded_gui::icon::IconWidget;
-use kolibri_embedded_gui::iconbutton::IconButton;
-use kolibri_embedded_gui::icons::{size12px, size18px, size24px, size32px};
-use kolibri_embedded_gui::label::Label;
+use kolibri_embedded_gui::icons::size18px;
 use kolibri_embedded_gui::prelude::*;
 use kolibri_embedded_gui::smartstate::{Container, Smartstate, SmartstateProvider};
-use kolibri_embedded_gui::spacer::Spacer;
-use kolibri_embedded_gui::style::{medsize_rgb565_debug_style, medsize_rgb565_style};
+use kolibri_embedded_gui::style::medsize_rgb565_style;
 use kolibri_embedded_gui::ui::{GuiResult, Interaction, Response, Ui, Widget};
 use std::cmp::max;
 use std::ops::{Add, Sub};
@@ -68,13 +61,9 @@ enum ButtonPress {
 }
 
 impl Widget for StepWidget<'_> {
-    fn draw<
-        DRAW: DrawTarget<Color = COL>,
-        COL: PixelColor,
-        CST: TextRenderer<Color = COL> + Clone,
-    >(
+    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
-        mut ui: &mut Ui<DRAW, COL, CST>,
+        ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // calc size
 
@@ -86,7 +75,7 @@ impl Widget for StepWidget<'_> {
         let width = match self.step {
             Step::Wait(dur) => {
                 Text::new(
-                    &*format!("{}s", dur.as_secs()),
+                    &format!("{}s", dur.as_secs()),
                     Point::zero(),
                     MonoTextStyle::new(&ui.style().default_font, ui.style().text_color),
                 )
@@ -105,10 +94,6 @@ impl Widget for StepWidget<'_> {
 
         // check for interaction
         let interact = iresponse.interaction;
-
-        let lower_button_start = iresponse.area.size.height as i32 - ICON_SIZE as i32;
-        let height_i32 = height as i32;
-
         let prevstate = self.smartstate.clone_inner();
 
         let intr = match interact {
@@ -207,25 +192,25 @@ impl Widget for StepWidget<'_> {
                 );
 
             match self.step {
-                Step::Clamp(action) => {
+                Step::Clamp(_action) => {
                     // todo: animations::TransitionLeft icon
                     let i = size18px::animations::TransitionLeft::new(col);
                     let icon = Image::new(&i, pos);
                     ui.draw(&icon)?;
                 }
-                Step::Injection(action) => {
+                Step::Injection(_action) => {
                     // todo: system::Type icon
                     let i = size18px::system::Type::new(col);
                     let icon = Image::new(&i, pos);
                     ui.draw(&icon)?;
                 }
-                Step::Pushrod(action) => {
+                Step::Pushrod(_action) => {
                     // todo: actions::MenuScale icon
                     let i = size18px::actions::MenuScale::new(col);
                     let icon = Image::new(&i, pos);
                     ui.draw(&icon)?;
                 }
-                Step::Wait(dur) => {
+                Step::Wait(_dur) => {
                     let i = size18px::activities::Hourglass::new(col);
                     let icon = Image::new(&i, pos);
                     ui.draw(&icon)?;
@@ -264,7 +249,7 @@ impl Widget for StepWidget<'_> {
                     let mut text = Text::new(&val, pos, text_style);
                     text.position += Point::new(
                         0,
-                        ((ICON_SIZE / 2 + text.bounding_box().size.height / 4) as i32),
+                        (ICON_SIZE / 2 + text.bounding_box().size.height / 4) as i32,
                     );
                     ui.draw(&text)?;
                 }
@@ -298,8 +283,9 @@ fn main() -> Result<(), core::convert::Infallible> {
     // ILI9341-clone like display
     let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
 
-    let circ = Circle::new(Point::new(100, 100), 50)
-        .draw_styled(&PrimitiveStyle::with_stroke(Rgb565::RED, 2), &mut display);
+    Circle::new(Point::new(100, 100), 50)
+        .draw_styled(&PrimitiveStyle::with_stroke(Rgb565::RED, 2), &mut display)
+        .ok();
 
     let output_settings = OutputSettingsBuilder::new()
         // .pixel_spacing(2)
@@ -310,17 +296,7 @@ fn main() -> Result<(), core::convert::Infallible> {
     let mut mouse_down = false;
     let mut last_down = false;
     let mut location = Point::new(0, 0);
-
-    let mut i = 0u8;
-
-    let (mut b1, mut b2, mut b3, mut b4, mut b5, mut b6) =
-        (false, false, false, false, false, false);
-
-    let mut ib1 = false;
-    let mut ib2 = false;
-
     let mut smartstates = SmartstateProvider::<20>::new();
-    let mut c1 = false;
 
     // clear bg once
     let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
