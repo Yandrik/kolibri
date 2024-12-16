@@ -5,10 +5,8 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["Yannik Bretschneider <me@yandrik.dev>"]
 description = "embedded-graphics based GUI framework made to be as lightweight as its namesake"
-readme = "../README.md"
+readme = "README.md"
 repository = "https://github.com/Yandrik/kolibri"
-
-
 
 [lib]
 
@@ -21,3 +19,26 @@ heapless = { version = "^0.7", features = ["serde", "ufmt-impl"] }
 
 [dev-dependencies]
 embedded-graphics-simulator = "0.5.0"
+profont = "0.7.0"
+ibm437 = "0.3.2"
+az = "1.1"
+ansi-parser = { version = "0.8.0", default-features = false }
+object-chain = "0.1"
+
+[[example]]
+name = "basic-example"
+
+[[example]]
+name = "basic-example-incremental-redraw"
+
+[[example]]
+name = "theming"
+
+[[example]]
+name = "experimenting"
+
+[[example]]
+name = "motion-scheduler"
+
+[[example]]
+name = "keyboard"
