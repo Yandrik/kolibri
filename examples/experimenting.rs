@@ -52,7 +52,7 @@ fn main() -> Result<(), core::convert::Infallible> {
     let mut c1 = false;
 
     // clear bg once
-    let mut ui = Ui::new_fullscreen(&mut display, medsize_crt_rgb565_style());
+    let mut ui = Ui::new_fullscreen(&mut display, medsize_sakura_rgb565_style());
     ui.clear_background().unwrap();
 
     // alloc buffer
@@ -63,7 +63,7 @@ fn main() -> Result<(), core::convert::Infallible> {
     let mut state = false;
 
     'outer: loop {
-        let mut ui = Ui::new_fullscreen(&mut display, medsize_crt_rgb565_style());
+        let mut ui = Ui::new_fullscreen(&mut display, medsize_sakura_rgb565_style());
         // ui.draw_widget_bounds_debug(Rgb565::RED);
         // ui.set_buffer(&mut buffer);
         smartstates.restart_counter();
@@ -85,17 +85,6 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         last_down = mouse_down;
 
-        ui.sub_ui(|ui| {
-            ui.style_mut().default_font = ascii::FONT_9X18_BOLD;
-            ui.add_horizontal(
-                Label::new("Kolibri Light Control App").smartstate(smartstates.next()),
-            );
-            ui.add_horizontal(
-                Label::new("Kolibri Light Control App").smartstate(smartstates.next()),
-            );
-            Ok(())
-        })
-        .ok();
         if ui
             .add_horizontal(Button::new("Something").smartstate(smartstates.next()))
             .clicked()
@@ -116,7 +105,7 @@ fn main() -> Result<(), core::convert::Infallible> {
         ui.new_row();
 
         ui.expand_row_height(20);
-        ui.add_horizontal(Button::new("This is creative!").smartstate(smartstates.next()));
+        ui.add_horizontal(Button::new("Another button!").smartstate(smartstates.next()));
         ui.add(IconWidget::<size24px::layout::CornerBottomLeft>::new_from_type());
         // ui.add(IconButton::new(size24px::actions::AddCircle));
         ui.add_horizontal(IconButton::new(size24px::actions::AddCircle).label("Add 2"));

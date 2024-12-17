@@ -1,4 +1,4 @@
-#![cfg_attr(not(test), cfg_attr(not(feature = "std-debug"), no_std))]
+#![cfg_attr(not(test), no_std)]
 
 pub mod button;
 pub mod checkbox;
@@ -10,7 +10,6 @@ pub mod smartstate;
 pub mod spacer;
 pub mod style;
 // mod temp;
-// mod container;
 pub mod framebuf;
 pub mod helpers;
 pub mod iconbutton;
@@ -30,10 +29,10 @@ pub enum RefOption<'a, T> {
     None,
 }
 
-impl<'a, T: Copy> RefOption<'a, T> {
+impl<T: Copy> RefOption<'_, T> {
     pub fn copy(&self) -> Option<T> {
         match self {
-            RefOption::Some(t) => Some(***&t),
+            RefOption::Some(t) => Some(**t),
             RefOption::None => None,
         }
     }

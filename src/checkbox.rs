@@ -30,7 +30,7 @@ impl<'a> Checkbox<'a> {
     }
 }
 
-impl<'a> Checkbox<'a> {
+impl Checkbox<'_> {
     fn draw_icon<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
@@ -50,7 +50,7 @@ impl<'a> Checkbox<'a> {
     }
 }
 
-impl<'a> Widget for Checkbox<'a> {
+impl Widget for Checkbox<'_> {
     fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,

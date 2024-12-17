@@ -168,11 +168,8 @@ mod test {
     use embedded_graphics::mock_display::MockDisplay;
     use embedded_graphics::pixelcolor::BinaryColor;
     use embedded_graphics::pixelcolor::*;
-    use embedded_graphics::prelude::*;
     use embedded_graphics::primitives::*;
-    use embedded_graphics::primitives::{
-        Circle, PrimitiveStyle, PrimitiveStyleBuilder, StyledDrawable,
-    };
+    use embedded_graphics::primitives::{Circle, PrimitiveStyle, StyledDrawable};
 
     #[test]
     fn test_basic_fbuf() {
@@ -247,7 +244,7 @@ mod test {
     #[test]
     fn test_widget_framebuf_try_new_fail() {
         let mut buf = [Rgb888::BLACK; 8];
-        let mut framebuf = WidgetFramebuf::try_new(&mut buf, Size::new(3, 3), Point::new(0, 0));
+        let framebuf = WidgetFramebuf::try_new(&mut buf, Size::new(3, 3), Point::new(0, 0));
 
         assert!(framebuf.is_none());
     }

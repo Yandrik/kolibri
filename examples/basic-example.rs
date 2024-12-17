@@ -1,28 +1,14 @@
 use embedded_graphics::geometry::Size;
-use embedded_graphics::mono_font::mapping::ISO_8859_1;
-use embedded_graphics::mono_font::{ascii, iso_8859_10};
-use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
-use embedded_graphics::prelude::{Point, WebColors};
-use embedded_graphics::primitives::{Circle, PrimitiveStyle, StyledDrawable};
-use embedded_graphics::text::Text;
+use embedded_graphics::mono_font::ascii;
+use embedded_graphics::pixelcolor::Rgb565;
+use embedded_graphics::prelude::Point;
 use embedded_graphics_simulator::sdl2::MouseButton;
 use embedded_graphics_simulator::{
-    BinaryColorTheme, OutputSettingsBuilder, SimulatorDisplay, SimulatorEvent, Window,
+    OutputSettingsBuilder, SimulatorDisplay, SimulatorEvent, Window,
 };
 use kolibri_embedded_gui::button::Button;
-use kolibri_embedded_gui::checkbox::Checkbox;
-use kolibri_embedded_gui::icon::IconWidget;
-use kolibri_embedded_gui::iconbutton::IconButton;
-use kolibri_embedded_gui::icons::{size12px, size24px, size32px};
 use kolibri_embedded_gui::label::Label;
-use kolibri_embedded_gui::prelude::*;
-use kolibri_embedded_gui::smartstate::{Smartstate, SmartstateProvider};
-use kolibri_embedded_gui::spacer::Spacer;
-use kolibri_embedded_gui::style::{
-    medsize_blue_rgb565_style, medsize_crt_rgb565_style, medsize_light_rgb565_style,
-    medsize_retro_rgb565_style, medsize_rgb565_debug_style, medsize_rgb565_style,
-    medsize_sakura_rgb565_style,
-};
+use kolibri_embedded_gui::style::medsize_rgb565_style;
 use kolibri_embedded_gui::ui::{Interaction, Ui};
 
 fn main() -> Result<(), core::convert::Infallible> {
@@ -41,19 +27,16 @@ fn main() -> Result<(), core::convert::Infallible> {
     let mut last_down = false;
     let mut location = Point::new(0, 0);
 
-    // mutable variables for state persistence
-    let mut checkbox1 = false;
-
-    // theme to use
-    let mut theme = medsize_rgb565_style();
+    // counter for incrementing thingy
+    let mut i = 0u8;
 
     // clear bg once
-    let mut ui = Ui::new_fullscreen(&mut display, theme.clone());
+    let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
     ui.clear_background().unwrap();
 
     'outer: loop {
         // create UI (needs to be done each frame)
-        let mut ui = Ui::new_fullscreen(&mut display, theme.clone());
+        let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
 
         // handle input
         match (last_down, mouse_down, location) {
@@ -78,42 +61,16 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         // === ACTUAL UI CODE STARTS HERE ===
 
-        ui.add(Label::new("Theming Example").with_font(ascii::FONT_10X20));
+        ui.add(Label::new("Basic Example").with_font(ascii::FONT_10X20));
 
-        ui.add_horizontal(Label::new("Label"));
-        ui.add(Label::new("Small Label").with_font(ascii::FONT_6X13));
+        ui.add(Label::new("Basic Counter (7LOC)"));
 
-        ui.add_horizontal(Button::new("Button"));
-        ui.add(Checkbox::new(&mut checkbox1));
-
-        // add button first to center icon vertically
-        ui.add_horizontal(IconButton::new(size24px::navigation::ArrowUpCircle));
-        ui.add(IconWidget::<size24px::actions::RefreshDouble>::new_from_type());
-
-        // one row offset
-        ui.new_row();
-
-        // theming buttons and such
-        ui.add(Label::new("Set Colors"));
-        ui.add(Label::new("Note that these are themes cobbled together in\na few minutes, so they might not look great.").with_font(ascii::FONT_5X8));
-        if ui.add_horizontal(Button::new("Dark")).clicked() {
-            theme = medsize_rgb565_style();
+        if ui.add_horizontal(Button::new("-")).clicked() {
+            i = i.saturating_sub(1);
         }
-        if ui.add_horizontal(Button::new("Light")).clicked() {
-            theme = medsize_light_rgb565_style();
-        }
-        if ui.add_horizontal(Button::new("Sakura")).clicked() {
-            theme = medsize_sakura_rgb565_style();
-        }
-        if ui.add_horizontal(Button::new("Blue")).clicked() {
-            theme = medsize_blue_rgb565_style();
-        }
-        ui.new_row();
-        if ui.add_horizontal(Button::new("CRT")).clicked() {
-            theme = medsize_crt_rgb565_style();
-        }
-        if ui.add_horizontal(Button::new("Retro")).clicked() {
-            theme = medsize_retro_rgb565_style();
+        ui.add_horizontal(Label::new(format!("Clicked {} times", i).as_ref()));
+        if ui.add_horizontal(Button::new("+")).clicked() {
+            i = i.saturating_add(1);
         }
 
         // === ACTUAL UI CODE ENDS HERE ===

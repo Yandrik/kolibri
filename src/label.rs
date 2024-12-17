@@ -19,7 +19,7 @@ pub struct Label<'a> {
 }
 
 impl<'a> Label<'a> {
-    pub fn new(text: &'a str) -> Label {
+    pub fn new(text: &'a str) -> Label<'a> {
         Label {
             text,
             font: None,
@@ -38,7 +38,7 @@ impl<'a> Label<'a> {
     }
 }
 
-impl<'a> Widget for Label<'a> {
+impl Widget for Label<'_> {
     fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,

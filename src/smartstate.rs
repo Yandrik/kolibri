@@ -26,17 +26,15 @@ impl<'a, T> Container<'a, T> {
     }
 }
 
-impl<'a, T: Clone> Container<'a, T> {
+impl<T: Clone> Container<'_, T> {
     pub fn clone_inner(&self) -> Option<T> {
-        if let Some(inner) = self.optional_something.as_ref() {
-            Some((*inner).clone())
-        } else {
-            None
-        }
+        self.optional_something
+            .as_ref()
+            .map(|inner| (*inner).clone())
     }
 }
 
-impl<'a, T: PartialEq> Container<'a, T> {
+impl<T: PartialEq> Container<'_, T> {
     pub fn eq_inner(&self, other: &T) -> bool {
         if let Some(inner) = self.optional_something.as_ref() {
             *inner == other
@@ -336,5 +334,11 @@ impl<const N: usize> SmartstateProvider<N> {
         for i in range.into_iter() {
             self.states[i].force_redraw();
         }
+    }
+}
+
+impl<const N: usize> Default for SmartstateProvider<N> {
+    fn default() -> Self {
+        Self::new()
     }
 }

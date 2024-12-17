@@ -13,20 +13,6 @@ use embedded_graphics::primitives::{Circle, Line, PrimitiveStyleBuilder, Rectang
 use embedded_graphics::text::{Alignment, Baseline, Text};
 use embedded_iconoir::prelude::{IconoirIcon, IconoirNewIcon};
 
-// fn lerp_fixed(start: u16, end: u16, t: u16, max_t: u16) -> u16 {
-//     let (start, end, t, max_t) = (start as u32, end as u32, t as u32, max_t as u32);
-//     let t = t.min(max_t);
-//     let result = start + ((end - start.min(end)) * t + (max_t / 2)) / max_t;
-//     result as u16
-// }
-
-// fn lerp_fixed(start: i16, end: i16, t: i16, max_t: i16) -> i16 {
-//     let (start, end, t, max_t) = (start as i32, end as i32, t as i32, max_t as i32);
-//     let t = t.min(max_t).max(0);
-//     let result = start + ((end - start) * t + (max_t / 2)) / max_t;
-//     result as i16
-// }
-
 fn lerp_fixed(start: i16, end: i16, t: i16, min_t: i16, max_t: i16) -> i16 {
     // Convert to i32 to prevent overflow during calculations
     let (start, end, t, min_t, max_t) = (
