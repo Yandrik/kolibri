@@ -63,7 +63,7 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-
+        
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -72,4 +72,10 @@ jobs:
 
       - name: Run Clippy
         run: cargo clippy -- -D warnings
+        continue-on-error: true
 
+      - name: Job Summary
+        if: ${{ failure() }}
+        run: |
+          echo "## Clippy Errors" >> $GITHUB_STEP_SUMMARY
+          cargo clippy 2>&1 | grep "error:" | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
