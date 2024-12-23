@@ -41,3 +41,9 @@ jobs:
         with:
           name: junit-report
           path: target/nextest/ci/junit.xml
+
+      - name: Test Summary
+        uses: test-summary/action@v2
+        with:
+          paths: "target/nextest/ci/junit.xml"
+        if: always()
