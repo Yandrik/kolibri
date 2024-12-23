@@ -13,7 +13,7 @@ impl Spacer {
     }
 }
 
-impl<'a> Widget for Spacer {
+impl Widget for Spacer {
     fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,

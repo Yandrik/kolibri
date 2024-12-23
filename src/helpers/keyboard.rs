@@ -13,7 +13,7 @@ pub enum Key {
     Char(char, char),
 }
 
-impl<'a> From<(char, char)> for Key {
+impl From<(char, char)> for Key {
     fn from(value: (char, char)) -> Self {
         Self::Char(value.0, value.1)
     }
@@ -513,6 +513,7 @@ impl<'a> Layout<'a> {
 /// * A `Response` made from an `InternalResponse::empty()`.
 ///     If a key was pressed, shift was clicked, or a key was erased, `response.changed()` will be `true`.
 ///     If a key was pressed (irrelevant of changes), `response.clicked()` will be `true`.
+#[allow(clippy::too_many_arguments)]
 pub fn draw_keyboard<
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,

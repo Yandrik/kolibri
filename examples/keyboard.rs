@@ -1,33 +1,28 @@
 use embedded_graphics::geometry::Size;
-use embedded_graphics::mono_font::ascii;
 use embedded_graphics::pixelcolor::{Rgb565, RgbColor};
-use embedded_graphics::prelude::{Point, WebColors};
+use embedded_graphics::prelude::Point;
 use embedded_graphics::primitives::{Circle, PrimitiveStyle, StyledDrawable};
-use embedded_graphics::text::Text;
 use embedded_graphics_simulator::sdl2::MouseButton;
 use embedded_graphics_simulator::{
-    BinaryColorTheme, OutputSettingsBuilder, SimulatorDisplay, SimulatorEvent, Window,
+    OutputSettingsBuilder, SimulatorDisplay, SimulatorEvent, Window,
 };
 use kolibri_embedded_gui::button::Button;
-use kolibri_embedded_gui::checkbox::Checkbox;
 use kolibri_embedded_gui::helpers::keyboard;
 use kolibri_embedded_gui::helpers::keyboard::{draw_keyboard, Layout};
 use kolibri_embedded_gui::icon::IconWidget;
-use kolibri_embedded_gui::iconbutton::IconButton;
-use kolibri_embedded_gui::icons::{size12px, size16px, size24px, size32px};
+use kolibri_embedded_gui::icons::size24px;
 use kolibri_embedded_gui::label::Label;
-use kolibri_embedded_gui::prelude::*;
-use kolibri_embedded_gui::smartstate::{Smartstate, SmartstateProvider};
-use kolibri_embedded_gui::spacer::Spacer;
-use kolibri_embedded_gui::style::{medsize_rgb565_debug_style, medsize_rgb565_style};
+use kolibri_embedded_gui::smartstate::SmartstateProvider;
+use kolibri_embedded_gui::style::medsize_rgb565_style;
 use kolibri_embedded_gui::ui::{Interaction, Ui};
 
 fn main() -> Result<(), core::convert::Infallible> {
     // ILI9341-clone like display
     let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
 
-    let circ = Circle::new(Point::new(100, 100), 50)
-        .draw_styled(&PrimitiveStyle::with_stroke(Rgb565::RED, 2), &mut display);
+    Circle::new(Point::new(100, 100), 50)
+        .draw_styled(&PrimitiveStyle::with_stroke(Rgb565::RED, 2), &mut display)
+        .ok();
 
     let output_settings = OutputSettingsBuilder::new()
         // .pixel_spacing(2)
@@ -38,17 +33,7 @@ fn main() -> Result<(), core::convert::Infallible> {
     let mut mouse_down = false;
     let mut last_down = false;
     let mut location = Point::new(0, 0);
-
-    let mut i = 0u8;
-
-    let (mut b1, mut b2, mut b3, mut b4, mut b5, mut b6) =
-        (false, false, false, false, false, false);
-
-    let mut ib1 = false;
-    let mut ib2 = false;
-
     let mut smartstates = SmartstateProvider::<50>::new();
-    let mut c1 = false;
 
     // clear bg once
     let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
