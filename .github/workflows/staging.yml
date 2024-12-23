@@ -70,12 +70,11 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Run Clippy
-        run: cargo clippy -- -D warnings
-        continue-on-error: true
-
-      - name: Job Summary
-        if: ${{ failure() }}
+      - name: Run Clippy and Report Errors
+        if: always()
         run: |
-          echo "## Clippy Errors" >> $GITHUB_STEP_SUMMARY
-          cargo clippy 2>&1 | grep "error:" | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+          cargo clippy -- -D warnings || {
+            echo "## Clippy Errors" >> $GITHUB_STEP_SUMMARY
+            cargo clippy -- -D warnings 2>&1 | grep -E "error:" | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
