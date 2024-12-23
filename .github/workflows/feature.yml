@@ -5,12 +5,6 @@ on:
     branches-ignore:
       - 'main'
       - 'staging'
-#   pull_request:
-#     branches-ignore:
-#       - 'main'
-#       - 'staging'
-
-
 
 jobs:
   build-and-test:
@@ -25,15 +19,25 @@ jobs:
         with:
           toolchain: stable
           override: true
-          
+
       - name: Install SDL2
         run: |
           sudo apt-get update
           sudo apt-get install -y libsdl2-dev
 
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
       - name: Build
         run: cargo build --verbose
 
-      - name: Run Tests
-        run: cargo test --verbose
+      - name: Run Tests with Nextest
+        run: cargo nextest run --profile ci
 
+      - name: Upload JUnit Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: junit-report
+          path: target/nextest/ci/junit.xml
