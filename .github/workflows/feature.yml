@@ -1,0 +1,54 @@
+name: Feature Branch CI
+
+on:
+  push:
+    branches-ignore:
+      - 'main'
+      - 'staging'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install SDL2
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Run Tests with Nextest
+        run: cargo nextest run --profile ci
+
+      - name: Upload JUnit Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: junit-report
+          path: target/nextest/ci/junit.xml
+
+      - name: Test Summary
+        uses: test-summary/action@v2
+        with:
+          paths: "target/nextest/ci/junit.xml"
+        if: always()
+      - name: Publish Test Report
+        uses: mikepenz/action-junit-report@v5
+        if: always()
+        with:
+          report_paths: "target/nextest/ci/junit.xml"
