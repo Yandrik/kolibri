@@ -4,8 +4,9 @@ on:
   push:
     branches-ignore:
       - 'main'
-      - 'staging'
-
+  pull_request:
+    branches-ignore:
+      - 'main'
 jobs:
   build-and-test:
     runs-on: ubuntu-latest

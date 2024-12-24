@@ -69,6 +69,12 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Run Clippy
-        run: cargo clippy -- -D warnings
+      - name: Run Clippy and Report Errors
+        if: always()
+        run: |
+          cargo clippy -- -D warnings || {
+            echo "## Clippy Errors" >> $GITHUB_STEP_SUMMARY
+            cargo clippy -- -D warnings 2>&1 | grep -E "error:" | sed 's/^/- /' >> $GITHUB_STEP_SUMMARY
+            exit 1
+          }
 
