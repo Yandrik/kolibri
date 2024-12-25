@@ -535,7 +535,7 @@ pub fn draw_keyboard<
 
     let redraw = smartstates
         .as_mut()
-        .map(|smp| smp.next())
+        .map(|smp| smp.nxt())
         .map(|sm| {
             // if the state is not the same as open, redraw (=> open has changed)
             let redraw = !sm.is_state(*open as u16);
@@ -587,7 +587,7 @@ pub fn draw_keyboard<
             let mut button = Button::new(btn_char.encode_utf8(&mut buf));
 
             if let Some(smartstates) = smartstates.as_mut() {
-                button = button.smartstate(smartstates.next());
+                button = button.smartstate(smartstates.nxt());
             }
 
             if ui.add_horizontal(button).clicked() {
@@ -617,7 +617,7 @@ pub fn draw_keyboard<
         let mut button = Button::new(btn_char.encode_utf8(&mut buf));
 
         if let Some(smartstates) = smartstates.as_mut() {
-            button = button.smartstate(smartstates.next());
+            button = button.smartstate(smartstates.nxt());
         }
 
         if ui.add_horizontal(button).clicked() {
@@ -659,7 +659,7 @@ pub fn draw_keyboard<
         let mut button = Button::new(btn_char.encode_utf8(&mut buf));
 
         if let Some(smartstates) = smartstates.as_mut() {
-            button = button.smartstate(smartstates.next());
+            button = button.smartstate(smartstates.nxt());
         }
 
         if ui.add_horizontal(button).clicked() {
@@ -694,7 +694,7 @@ pub fn draw_keyboard<
         let mut button = Button::new(btn_char.encode_utf8(&mut buf));
 
         if let Some(smartstates) = smartstates.as_mut() {
-            button = button.smartstate(smartstates.next());
+            button = button.smartstate(smartstates.nxt());
         }
 
         if ui.add_horizontal(button).clicked() {
@@ -714,7 +714,7 @@ pub fn draw_keyboard<
             .add({
                 let b = IconButton::<size16px::navigation::NavArrowUp>::new_from_type();
                 if let Some(smartstates) = smartstates.as_mut() {
-                    b.smartstate(smartstates.next())
+                    b.smartstate(smartstates.nxt())
                 } else {
                     b
                 }
@@ -753,7 +753,7 @@ pub fn draw_keyboard<
         .add_horizontal({
             let b = Button::new("|                |");
             if let Some(smartstates) = smartstates.as_mut() {
-                b.smartstate(smartstates.next())
+                b.smartstate(smartstates.nxt())
             } else {
                 b
             }
@@ -770,7 +770,7 @@ pub fn draw_keyboard<
         .add({
             let b = IconButton::<size16px::navigation::NavArrowDown>::new_from_type();
             if let Some(smartstates) = smartstates.as_mut() {
-                b.smartstate(smartstates.next())
+                b.smartstate(smartstates.nxt())
             } else {
                 b
             }

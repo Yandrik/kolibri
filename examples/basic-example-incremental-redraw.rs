@@ -92,27 +92,32 @@ fn main() -> Result<(), core::convert::Infallible> {
         ui.add(
             Label::new("Basic Example (incremental)")
                 .with_font(ascii::FONT_10X20)
-                .smartstate(smartstates.next()),
+                .smartstate(smartstates.nxt()),
         );
 
         // Smartstates of labels are never redrawn, unless they are forced to be.
-        ui.add(Label::new("Basic Counter (7LOC)").smartstate(smartstates.next()));
+        ui.add(Label::new("Basic Counter (7LOC)").smartstate(smartstates.nxt()));
 
         // Smartstates of buttons are redrawn when they are interacted with.
         if ui
-            .add_horizontal(Button::new("-").smartstate(smartstates.next()))
+            .add_horizontal(Button::new("-").smartstate(smartstates.nxt()))
             .clicked()
         {
             i = i.saturating_sub(1);
 
             // force smartstate of label to be redrawn if the button is clicked
-            smartstates.next().force_redraw();
+            smartstates.nxt().force_redraw();
         }
         ui.add_horizontal(
-            Label::new(&format!("Clicked {} times", i)).smartstate(smartstates.next()),
+            Label::new(&format!(
+                "Clicked {} times{}",
+                i,
+                " ".repeat(3 - (i.max(1).ilog10()) as usize)
+            ))
+            .smartstate(smartstates.nxt()),
         );
         if ui
-            .add_horizontal(Button::new("+").smartstate(smartstates.next()))
+            .add_horizontal(Button::new("+").smartstate(smartstates.nxt()))
             .clicked()
         {
             i = i.saturating_add(1);

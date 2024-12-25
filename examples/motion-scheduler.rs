@@ -334,12 +334,12 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         // === UI ===
 
-        ui.add_horizontal(StepWidget::new(&mut step).smartstate(smartstates.next()));
-        ui.add_horizontal(StepWidget::new(&mut step1).smartstate(smartstates.next()));
-        ui.add_horizontal(StepWidget::new(&mut step11).smartstate(smartstates.next()));
-        ui.add_horizontal(StepWidget::new(&mut step2).smartstate(smartstates.next()));
-        ui.add_horizontal(StepWidget::new(&mut step2).smartstate(smartstates.next()));
-        ui.add(StepWidget::new(&mut step2).smartstate(smartstates.next()));
+        ui.add_horizontal(StepWidget::new(&mut step).smartstate(smartstates.nxt()));
+        ui.add_horizontal(StepWidget::new(&mut step1).smartstate(smartstates.nxt()));
+        ui.add_horizontal(StepWidget::new(&mut step11).smartstate(smartstates.nxt()));
+        ui.add_horizontal(StepWidget::new(&mut step2).smartstate(smartstates.nxt()));
+        ui.add_horizontal(StepWidget::new(&mut step2).smartstate(smartstates.nxt()));
+        ui.add(StepWidget::new(&mut step2).smartstate(smartstates.nxt()));
 
         // === END UI ===
 
