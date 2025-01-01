@@ -227,12 +227,12 @@ impl<const N: usize> SmartstateProvider<N> {
         self.states
             .get_mut((self.pos as i32 + pos) as usize)
             .expect(
-                "ERROR: Smartstate Index out of range! Did you call get_relative() before next()?",
+                "ERROR: Smartstate Index out of range! Did you call get_relative() before nxt()?",
             )
     }
 
     #[inline(always)]
-    pub fn next(&mut self) -> &mut Smartstate {
+    pub fn nxt(&mut self) -> &mut Smartstate {
         let state = self
             .states
             .get_mut(self.pos)
@@ -245,14 +245,14 @@ impl<const N: usize> SmartstateProvider<N> {
     pub fn current(&mut self) -> &mut Smartstate {
         self.states
             .get_mut(self.pos - 1)
-            .expect("ERROR: Smartstate Index out of range! Did you call current() before next()?")
+            .expect("ERROR: Smartstate Index out of range! Did you call current() before nxt()?")
     }
 
     #[inline(always)]
     pub fn prev(&mut self) -> &mut Smartstate {
         self.states
             .get_mut(self.pos - 2)
-            .expect("ERROR: Smartstate Index out of range! Did you call prev() before 2 * next()?")
+            .expect("ERROR: Smartstate Index out of range! Did you call prev() before 2 * nxt()?")
     }
 
     #[inline(always)]

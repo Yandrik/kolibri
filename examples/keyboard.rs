@@ -71,7 +71,7 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         let text_smartstate = smartstates.get_pos();
         ui.add_and_clear_col_remainder(
-            Label::new(format!("Text: {}", text).as_ref()).smartstate(smartstates.next()),
+            Label::new(format!("Text: {}", text).as_ref()).smartstate(smartstates.nxt()),
             last_len > text.len(),
         );
         last_len = text.len();
@@ -81,7 +81,7 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         ui.expand_row_height(20);
         if ui
-            .add_horizontal(Button::new("Open Keyboard").smartstate(smartstates.next()))
+            .add_horizontal(Button::new("Open Keyboard").smartstate(smartstates.nxt()))
             .clicked()
         {
             open = true;
