@@ -7,9 +7,13 @@ on:
   pull_request:
     branches-ignore:
       - 'main'
+      
 jobs:
   build-and-test:
+    if: "!contains(github.event.pull_request.base.ref, 'main')"
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
 
     steps:
       - name: Checkout Code

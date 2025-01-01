@@ -234,7 +234,15 @@ impl Placer {
             return Err(GuiError::NoSpaceLeft);
         }
 
-        // check bounds
+        // set bounds (temporary) TODO: do this PROPERLY!
+        if let Align(HorizontalAlign::Center, _) = self.align {
+            if self.pos.x as u32 + size.width > self.bounds.width {
+                return Err(GuiError::NoSpaceLeft);
+            }
+            // Calculate the right x-coordinate to center the widget between self.pos.x and self.bounds.width
+            // (self.bounds.width + self.pos.x as u32 - size.width) / 2
+            self.pos.x = ((self.bounds.width + self.pos.x as u32 - size.width) / 2) as i32;
+        };
         let right = size.width + self.pos.x as u32;
         let mut bottom = max(self.row_height, size.height) + self.pos.y as u32;
         if !self.check_bounds(Size::new(right, bottom)) {
@@ -448,6 +456,7 @@ where
     interact: Interaction,
     /// Whether the UI was background-cleared this frame
     cleared: bool,
+    debug_color: Option<COL>,
 }
 
 // getters for Ui things
@@ -500,6 +509,7 @@ where
             placer,
             interact: Interaction::None,
             cleared: false,
+            debug_color: None,
         }
     }
 
@@ -513,13 +523,10 @@ where
     }
 
     pub fn add_and_clear_col_remainder(&mut self, widget: impl Widget, clear: bool) -> Response {
-        let resp = match self.add_raw(widget) {
-            Ok(resp) => resp,
-            Err(e) => {
-                // panic!("Failed to add widget to UI: {:?}", e);
-                Response::from_error(e)
-            }
-        };
+        let resp = self.add_raw(widget).unwrap_or_else(|e| {
+            // panic!("Failed to add widget to UI: {:?}", e);
+            Response::from_error(e)
+        });
         if clear {
             self.clear_row_to_end().ok();
         }
@@ -531,13 +538,10 @@ where
 
     pub fn add(&mut self, widget: impl Widget) -> Response {
         // draw widget. TODO: Add new auto ID
-        let resp = match self.add_raw(widget) {
-            Ok(resp) => resp,
-            Err(e) => {
-                // panic!("Failed to add widget to UI: {:?}", e);
-                Response::from_error(e)
-            }
-        };
+        let resp = self.add_raw(widget).unwrap_or_else(|e| {
+            // panic!("Failed to add widget to UI: {:?}", e);
+            Response::from_error(e)
+        });
 
         // create new row
         self.new_row();
@@ -545,16 +549,27 @@ where
         resp
     }
 
+    pub fn add_centered(&mut self, widget: impl Widget) -> Response {
+        // draw widget. TODO: Add new auto ID
+        let align = self.placer.align;
+        self.placer.align = Align(HorizontalAlign::Center, align.1);
+        let resp = self.add_raw(widget).unwrap_or_else(|e| {
+            // panic!("Failed to add widget to UI: {:?}", e);
+            Response::from_error(e)
+        });
+        self.placer.align = align;
+
+        self.new_row();
+        resp
+    }
+
     /// Add a widget horizontally to the layout to the current row
     pub fn add_horizontal(&mut self, widget: impl Widget) -> Response {
         // add widget (auto-expands row height potentially
-        let resp = match self.add_raw(widget) {
-            Ok(resp) => resp,
-            Err(e) => {
-                // panic!("Failed to add widget to UI: {:?}", e);
-                Response::from_error(e)
-            }
-        };
+        let resp = self.add_raw(widget).unwrap_or_else(|e| {
+            // panic!("Failed to add widget to UI: {:?}", e);
+            Response::from_error(e)
+        });
         // ignore space alignment errors (those are "fine". If wrapping is enabled,
         // the next widget will be placed on the next row, without any space in between.)
         self.allocate_space_no_wrap(self.style().spacing.item_spacing)
@@ -564,7 +579,20 @@ where
     }
 
     pub fn add_raw(&mut self, mut widget: impl Widget) -> GuiResult<Response> {
-        widget.draw(self)
+        let res = widget.draw(self);
+        if let (Ok(res), Some(debug_color)) = (&res, self.debug_color) {
+            res.internal
+                .area
+                .draw_styled(
+                    &PrimitiveStyleBuilder::new()
+                        .stroke_color(debug_color)
+                        .stroke_width(1)
+                        .build(),
+                    &mut self.painter,
+                )
+                .ok();
+        }
+        res
     }
 
     pub fn style(&self) -> &Style<COL> {
@@ -815,6 +843,7 @@ where
                 interact: self.interact,
                 placer,
                 cleared: false,
+                debug_color: self.debug_color,
             };
             (f)(&mut sub_ui)
         })?;
@@ -834,6 +863,7 @@ where
                 interact: self.interact,
                 placer: self.placer.clone(),
                 cleared: false,
+                debug_color: self.debug_color,
             };
             let res = (f)(&mut sub_ui);
 
@@ -928,5 +958,9 @@ where
                 &mut self.painter,
             )
             .map_err(|_| GuiError::DrawError(Some("Couldn't draw bounds")))
+    }
+
+    pub fn draw_widget_bounds_debug(&mut self, color: COL) {
+        self.debug_color = Some(color);
     }
 }

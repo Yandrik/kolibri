@@ -11,7 +11,8 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-
+    permissions:
+      checks: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3

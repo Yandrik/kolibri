@@ -9,6 +9,12 @@ impl<'a, T> Container<'a, T> {
         }
     }
 
+    pub fn new(inner: &'a mut T) -> Self {
+        Self {
+            optional_something: Some(inner),
+        }
+    }
+
     pub fn set(&mut self, val: &'a mut T) {
         self.optional_something = Some(val);
     }
@@ -155,18 +161,18 @@ impl<T: PartialEq> Container<'_, T> {
 /// }
 /// ```
 ///
-pub struct Smartstate(u16, bool);
+pub struct Smartstate(u32, bool);
 
 impl Smartstate {
     pub fn empty() -> Self {
         Self(0, false)
     }
 
-    pub fn state(state: u16) -> Self {
+    pub fn state(state: u32) -> Self {
         Self(state, true)
     }
 
-    pub fn set_state(&mut self, state: u16) {
+    pub fn set_state(&mut self, state: u32) {
         self.0 = state;
         self.1 = true;
     }
@@ -175,7 +181,7 @@ impl Smartstate {
         !self.1
     }
 
-    pub fn is_state(&self, state: u16) -> bool {
+    pub fn is_state(&self, state: u32) -> bool {
         self.1 && self.0 == state
     }
 
