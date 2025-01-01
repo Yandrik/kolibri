@@ -274,8 +274,7 @@ impl Widget for Slider<'_> {
                     .ok();
             }
             ui.draw(&slider_line.into_styled(line_style)).ok();
-            ui.draw(&slider_knob.into_styled(slider_knob_style))
-                .ok();
+            ui.draw(&slider_knob.into_styled(slider_knob_style)).ok();
             // ui.draw(&icon_img).ok();
             if let Some(text) = text.as_mut() {
                 ui.draw(text).unwrap();
