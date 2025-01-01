@@ -58,7 +58,7 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
 
     fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
     where
-        I: IntoIterator<Item=Pixel<Self::Color>>,
+        I: IntoIterator<Item = Pixel<Self::Color>>,
     {
         for pixel in pixels {
             let pt = pixel.0.sub(self.position);
@@ -153,7 +153,7 @@ impl<C: PixelColor> Drawable for WidgetFramebuf<'_, C> {
 
     fn draw<D>(&self, target: &mut D) -> Result<Self::Output, D::Error>
     where
-        D: DrawTarget<Color=Self::Color>,
+        D: DrawTarget<Color = Self::Color>,
     {
         target.fill_contiguous(
             &Rectangle::new(self.position, self.size),
