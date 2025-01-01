@@ -77,7 +77,7 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
         } else {
             None
         };
-        let mut height = max(
+        let height = max(
             max(ui.style().default_widget_height, ui.get_row_height()),
             min_height,
         );

@@ -142,7 +142,7 @@ impl<'a> HashLabel<'a> {
     }
 }
 
-impl<'a> Widget for HashLabel<'a> {
+impl Widget for HashLabel<'_> {
     fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,

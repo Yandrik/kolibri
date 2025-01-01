@@ -92,8 +92,6 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
 
         let mut color_iter = colors.into_iter();
 
-        let offset = drawable_area.top_left - self.position;
-
         // skip all un-drawable rows
         for _ in 0..top_skip {
             for _ in 0..area.size.width as usize {
@@ -110,7 +108,7 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
                 ..drawable_area.top_left.x as usize + drawable_area.size.width as usize {
                 let pos = (y as i32 - self.position.y) as usize * self.size.width as usize + (x as i32 - self.position.x) as usize;
                 match color_iter.next() {
-                    Some(color) => self.buf[pos as usize] = color,
+                    Some(color) => self.buf[pos] = color,
                     None => return Ok(()),
                 }
             }
@@ -135,7 +133,7 @@ impl<C: PixelColor> DrawTarget for WidgetFramebuf<'_, C> {
                 ..drawable_area.top_left.x as usize + drawable_area.size.width as usize
             {
                 let pos = (y as i32 - self.position.y) as usize * self.size.width as usize + (x as i32 - self.position.x) as usize;
-                self.buf[pos as usize] = color;
+                self.buf[pos] = color;
             }
         }
         Ok(())

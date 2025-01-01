@@ -2,17 +2,13 @@
 
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiError, GuiResult, Interaction, Response, Ui, Widget};
-use core::cmp::{max, min};
-use core::ops::{Add, Sub};
+use core::cmp::max;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
-use embedded_graphics::mono_font::MonoTextStyle;
-use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{
-    Circle, CornerRadii, PrimitiveStyle, PrimitiveStyleBuilder, Rectangle, RoundedRectangle,
+    Circle, CornerRadii, PrimitiveStyleBuilder, Rectangle, RoundedRectangle,
 };
-use embedded_graphics::text::{Baseline, Text};
 
 pub struct ToggleSwitch<'a> {
     active: &'a mut bool,

@@ -1,17 +1,14 @@
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiResult, Interaction, Response, Ui, Widget};
 use core::cmp::max;
-use core::marker::PhantomData;
 use core::ops::RangeInclusive;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
-use embedded_graphics::image::Image;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{Circle, Line, PrimitiveStyleBuilder, Rectangle};
+use embedded_graphics::primitives::{Circle, Line, PrimitiveStyleBuilder};
 use embedded_graphics::text::{Alignment, Baseline, Text};
-use embedded_iconoir::prelude::{IconoirIcon, IconoirNewIcon};
 
 fn lerp_fixed(start: i16, end: i16, t: i16, min_t: i16, max_t: i16) -> i16 {
     // Convert to i32 to prevent overflow during calculations
@@ -96,7 +93,7 @@ impl Widget for Slider<'_> {
 
         let padding = ui.style().spacing.button_padding;
 
-        let slider_thickness = 4;
+        let slider_thickness = 2;
         let slider_knob_diameter = 10;
 
         let mut height = max(
@@ -137,7 +134,7 @@ impl Widget for Slider<'_> {
         let iresponse = ui.allocate_space(Size::new(size.width, max(size.height, height)))?;
 
         // slider main line
-        let mut slider_line = Line::new(
+        let slider_line = Line::new(
             Point::new(
                 iresponse.area.top_left.x + padding.width as i32 + slider_knob_diameter as i32 / 2,
                 iresponse.area.top_left.y + (padding.height + slider_knob_diameter / 2) as i32,
@@ -152,7 +149,7 @@ impl Widget for Slider<'_> {
         let style = ui.style();
         let line_style = PrimitiveStyleBuilder::new()
             .stroke_color(style.border_color)
-            .stroke_width(2)
+            .stroke_width(slider_thickness)
             .fill_color(style.primary_color)
             .build();
         let mut slider_knob_style = PrimitiveStyleBuilder::new()
@@ -241,7 +238,7 @@ impl Widget for Slider<'_> {
             *self.range.end(),
         );
 
-        let mut old_slider_knob = Circle::with_center(
+        let old_slider_knob = Circle::with_center(
             Point::new(
                 iresponse.area.top_left.x + old_slider_knob_pos as i32,
                 iresponse.area.top_left.y
@@ -273,11 +270,11 @@ impl Widget for Slider<'_> {
             ui.start_drawing(&iresponse.area);
 
             if old_slider_knob_pos != slider_knob_pos {
-                ui.draw(&mut old_slider_knob.into_styled(old_slider_knob_style))
+                ui.draw(&old_slider_knob.into_styled(old_slider_knob_style))
                     .ok();
             }
-            ui.draw(&mut slider_line.into_styled(line_style)).ok();
-            ui.draw(&mut slider_knob.into_styled(slider_knob_style))
+            ui.draw(&slider_line.into_styled(line_style)).ok();
+            ui.draw(&slider_knob.into_styled(slider_knob_style))
                 .ok();
             // ui.draw(&icon_img).ok();
             if let Some(text) = text.as_mut() {
