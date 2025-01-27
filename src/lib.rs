@@ -13,6 +13,9 @@ pub mod style;
 pub mod framebuf;
 pub mod helpers;
 pub mod iconbutton;
+pub mod slider;
+pub mod toggle_button;
+pub mod toggle_switch;
 pub mod ui;
 
 pub mod prelude {

@@ -182,6 +182,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "foldhash"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f81ec6369c545a7d40e4589b5597581fa1c441fe1cce96dd1de43159910a36a2"
+
+[[package]]
 name = "funty"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -254,6 +260,7 @@ dependencies = [
  "embedded-graphics",
  "embedded-graphics-simulator",
  "embedded-iconoir",
+ "foldhash",
  "heapless",
  "ibm437",
  "object-chain",
