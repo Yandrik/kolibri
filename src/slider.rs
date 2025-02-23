@@ -264,7 +264,7 @@ impl Widget for Slider<'_> {
                 0
             }
         };
-        let state_val = (*self.value as u16) as u32 | (interact_val as u32) << 16;
+        let state_val = (*self.value as u16) as u32 | ((interact_val as u32) << 16);
 
         if !self.smartstate.eq_inner(&Smartstate::state(state_val)) {
             ui.start_drawing(&iresponse.area);
