@@ -86,19 +86,65 @@ fn main() {
     smartstates.restart_counter();
 
     // add a smartstate to each widget
-    ui.add(Label::new("Basic Example").with_font(ascii::FONT_10X20).smartstate(smartstates.next()));
+    ui.add(Label::new("Basic Example").with_font(ascii::FONT_10X20).smartstate(smartstates.nxt()));
 
     // [...]
     
-    if ui.add_horizontal(Button::new("-").smartstate(smartstates.next())).clicked() {
+    if ui.add_horizontal(Button::new("-").smartstate(smartstates.nxt())).clicked() {
       i = i.saturating_sub(1);
-      smartstates.next().force_redraw()
+      smartstates.nxt().force_redraw()
     }
-    ui.add_horizontal(Label::new(format!("Clicked {} times", i).as_ref()).smartstate(smartstates.next()));
+    ui.add_horizontal(Label::new(format!("Clicked {} times", i).as_ref()).smartstate(smartstates.nxt()));
 
     // [...]
   }
 }
+```
+
+Alternatively, use a HashLabel: 
+
+
+```rust
+fn main() {
+  // [...]
+  
+  // initialize smartstate provider
+  let smartstates = SmartstateProvider::<10>::new();
+
+  // initialize hasher
+  let hasher = Hasher::new();
+  
+  // clear the background only once
+  Ui::new_fullscreen(&mut display, medsize_rgb565_style()).clear_background().unwrap();
+  
+  loop {
+    // [...]
+    
+    // restart the counter at the start (or end) of the loop
+    smartstates.restart_counter();
+
+    // add a smartstate to each widget
+    ui.add(Label::new("Basic Example").with_font(ascii::FONT_10X20).smartstate(smartstates.nxt()));
+
+    // [...]
+    
+    // use the button normally - no forced redraws needed!
+    if ui.add_horizontal(Button::new("-").smartstate(smartstates.nxt())).clicked() {
+      i = i.saturating_sub(1);
+    }
+
+    // use a HashLabel instead of a normal Label
+    // HashLabels auto-refresh when their content's hash changes
+    ui.add_horizontal(HashLabel::new(
+      format!("Clicked {} times", i).as_ref(), 
+      smartstates.nxt(),
+      &hasher
+    ));
+
+    // [...]
+  }
+}
+
 ```
 
 For this hassle, you get a speedup of around 15x on an ILI9341 SPI display for the example above, 
@@ -165,7 +211,7 @@ means that it can be used with practically any display driver for Rust.
 Kolibri's dead simple input system allows you to use any input device that can give you an `(x, y)` point on your screen,
 like touch screen drivers, or mouse pointers.
 
-> Further input device support (e.g. a simulated mouse cursor, or an encoder-based input system) are planned, 
+> Further input device support (e.g. a simulated mouse cursor, or an encoder-based input system) are planned,
 > but not yet available. If you need those for a project, feel free to open an issue or a pull request.
 
 ## Current State
@@ -194,7 +240,7 @@ if you have any questions.
 
 - [ ] layout
     - [x] right-to-left top-to-bottom layout
-    - [ ] aligns (center, right, bottom, ...)
+    - [ ] aligns (center, right, bottom, ...) (partially available in widgets)
     - [x] side panels (right)
     - [ ] side panels (all sides)
     - [x] modals (e.g. drawing an alert box on top of everything else)
@@ -217,7 +263,8 @@ if you have any questions.
     - [ ] ListBox
     - [ ] Something like a ScrollArea
     - [ ] ProgressBar
-    - [ ] Toggle
+    - [x] Toggle
+    - [x] Slider
     - [ ] Graph
 
 - [x] performance
@@ -240,6 +287,7 @@ if you have any questions.
     - [x] framebuffer
     - [ ] smartstates
   - [ ] unit tests for widgets
+    - [x] slider
   - [ ] unit tests for drawing components
     - [ ] Placer
     - [ ] Painter
@@ -299,6 +347,15 @@ Kolibri is not a high-end GUI framework. It is not meant to be used for creating
 very complicated or super nice-looking user interfaces. If that's something you're 
 interested in, check out [the rust bindings for lvgl](https://github.com/lvgl/lv_binding_rust/) or 
 [slint (not free for commercial use)](https://slint.rs/).
+
+
+## Changelog
+
+### v0.1.0
+- **!BREAKING!** Renaming of `SmartstateProvider::next()` to `SmartstateProvider::nxt()`
+- Addition of toggle button / switch
+- Addition of Sliders
+- Add Subtitles to IconButtons
 
 
 ## License
