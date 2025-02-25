@@ -1,3 +1,14 @@
+//! # Checkbox Widget
+//!
+//! A customizable checkbox widget that provides a simple boolean state control.
+//!
+//! The checkbox widget provides a traditional square control that can be toggled between checked
+//! and unchecked states. It features an automatic icon that scales based on the available space
+//! and integrates with the framework's theming system for consistent appearance.
+//!
+//! This widget is part of the Kolibri embedded GUI framework's core widget set and integrates
+//! with the framework's [Smartstate] system for efficient rendering.
+//!
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiError, GuiResult, Interaction, Response, Ui, Widget};
 use core::cmp::max;
@@ -11,6 +22,55 @@ use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
 use embedded_iconoir::prelude::*;
 use embedded_iconoir::{size12px, size18px, size24px, size32px};
 
+/// A checkbox widget for toggling boolean values.
+///
+/// The checkbox state is stored in a mutable reference to a boolean value, allowing
+/// the application to directly access the current state.
+///
+/// ## Example
+///
+/// ```no_run
+/// # use embedded_graphics::pixelcolor::Rgb565;
+/// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+/// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+/// # use kolibri_embedded_gui::ui::Ui;
+/// # use embedded_graphics::prelude::*;
+/// # use embedded_graphics::primitives::Rectangle;
+/// # use embedded_iconoir::prelude::*;
+/// # use embedded_iconoir::size12px;
+/// # use kolibri_embedded_gui::ui::*;
+/// # use kolibri_embedded_gui::label::*;
+/// # use kolibri_embedded_gui::smartstate::*;
+/// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+/// # let output_settings = OutputSettingsBuilder::new().build();
+/// # let mut window = Window::new("Kolibri Example", &output_settings);
+/// # use kolibri_embedded_gui::checkbox::Checkbox;
+///
+/// let mut checked = false;
+/// let mut smartstates = SmartstateProvider::<10>::new();
+///
+/// // Create a simple checkbox
+/// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+/// let checkbox = Checkbox::new(&mut checked);
+///
+/// ui.add(checkbox);
+///
+/// if checked {
+///     // Handle checked state
+/// }
+///
+/// // OR
+///
+/// # let checkbox = Checkbox::new(&mut checked);
+/// if ui.add(checkbox).changed() {
+///    // Handle state change only when the checkbox is toggled
+/// }
+///
+/// // Create a checkbox with smartstate for optimized rendering
+/// let checkbox_with_smartstate = Checkbox::new(&mut checked)
+///     .smartstate(smartstates.nxt());
+///
+/// ```
 pub struct Checkbox<'a> {
     checked: &'a mut bool,
     smartstate: Container<'a, Smartstate>,
@@ -24,6 +84,13 @@ impl<'a> Checkbox<'a> {
         }
     }
 
+    /// Attaches a [Smartstate] to the checkbox for incremental redrawing.
+    ///
+    /// When a smartstate is attached, the checkbox will only redraw when its state
+    /// or appearance changes, improving performance on resource-constrained devices.
+    ///
+    /// This is particularly useful when using embedded displays with slow update rates
+    /// or when minimizing power consumption is important.
     pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
         self.smartstate.set(smartstate);
         self
@@ -31,6 +98,13 @@ impl<'a> Checkbox<'a> {
 }
 
 impl Checkbox<'_> {
+    /// Draws the icon for the checkbox.
+    ///
+    /// This internal helper method handles drawing the check mark icon when the checkbox
+    /// is in the checked state. It positions the icon in the center of the checkbox area
+    /// based on the provided center offset.
+    ///
+    /// The icon size is determined by the calling code based on available space.
     fn draw_icon<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,

@@ -186,18 +186,34 @@ impl Default for Align {
 }
 
 #[derive(Clone, Debug)]
+/// Struct for managing placing of widgets in the [Ui]
+///
+/// Placement is deterministic (meaning widgets placed with the same settings in the same order will always be placed at the same position)
+///
+/// ## Placement Rules
+///
+/// - Widgets are placed in rows, from left to right, from top to bottom (for now)
+/// - Placement is deterministic and repeatable
+/// - Placement cannot happen outside of the bounds of the placer
 struct Placer {
+    /// Current row
     row: u32,
+    /// Current column
     col: u32,
+    /// Position of the top left corner of the placer
     pos: Point,
+    /// Height of the current row
     row_height: u32,
+    /// Bounds of the placer
     bounds: Size,
+    /// Whether to wrap to the next row if the widget doesn't fit
     wrap: bool,
     #[allow(unused)] // TODO: use in the future
     align: Align,
 }
 
 impl Placer {
+    /// Create a new placer with the given bounds, wrapping and alignment
     pub fn new(bounds: Size, wrap: bool, align: Align) -> Self {
         Placer {
             row: 0,
@@ -210,16 +226,23 @@ impl Placer {
         }
     }
 
+    /// **STUB / NOT YET USEFUL**: Set the wrap setting of the placer
     #[allow(unused)] // TODO: use in the future
     pub fn set_wrap(&mut self, wrap: bool) {
         self.wrap = wrap;
     }
 
+    /// **STUB / NOT YET USEFUL**: Set the alignment of the placer
     #[allow(unused)] // TODO: use in the future
     pub fn set_align(&mut self, align: Align) {
         self.align = align;
     }
 
+    /// Allocate the next widget with the given `size`, explicitly disabling wrapping for this operation
+    ///
+    /// ## Returns
+    ///
+    /// Returns the allocated rectangle, or an error if the widget doesn't fit
     fn next_no_wrap(&mut self, size: Size) -> GuiResult<Rectangle> {
         let wrap = self.wrap;
         self.wrap = false;
@@ -228,6 +251,11 @@ impl Placer {
         res
     }
 
+    /// Allocate the next widget with the given `size`.
+    ///
+    /// ## Returns
+    ///
+    /// Returns the allocated rectangle, or an error if the widget doesn't fit
     fn next(&mut self, size: Size) -> GuiResult<Rectangle> {
         // check that it's in bounds (size < bounds)
         if !self.check_bounds(size) {
@@ -274,10 +302,13 @@ impl Placer {
     }
 
     #[allow(unused)]
+    /// Returns the full size of the current row, which is the full width of the bounds and the current row height.
     fn row_size(&self) -> Size {
         Size::new(self.bounds.width, self.row_height)
     }
 
+    /// Returns the remaining available space within the bounds of the [Placer] for placing widgets.
+    /// The remaining space hearby is a rectangle from the current plcer X and Y position to the bottom right corner of the bounds.
     fn space_available(&self) -> Size {
         Size::new(
             self.bounds.width - self.pos.x as u32,
@@ -285,6 +316,7 @@ impl Placer {
         )
     }
 
+    /// Advances to the next row, setting the initial row height to the provided `height` parameter.
     fn new_row(&mut self, height: u32) {
         self.row += 1;
         self.col = 0;
@@ -292,10 +324,12 @@ impl Placer {
         self.row_height = height;
     }
 
+    /// Returns the current row height.
     fn row_height(&self) -> u32 {
         self.row_height
     }
 
+    /// Expands the current row height to the maximum of the current height and the provided `height` parameter.
     fn expand_row_height(&mut self, height: u32) {
         self.row_height = max(self.row_height, height);
     }
@@ -306,6 +340,10 @@ impl Placer {
     }
 }
 
+/// Struct that manages drawing to a [DrawTarget], with optional [WidgetFramebuf] for more efficient drawing.
+///
+///
+/// It provides methods for setting the buffer, starting and finalizing the drawing process, and clearing the buffer.
 struct Painter<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> {
     target: &'a mut DRAW,
     buffer_raw: Option<UnsafeCell<&'a mut [COL]>>,
@@ -313,6 +351,7 @@ struct Painter<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> {
 }
 
 impl<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> Painter<'a, COL, DRAW> {
+    /// Creates a new [Painter] instance based on the provided [DrawTarget].
     fn new(target: &'a mut DRAW) -> Self {
         Self {
             target,
@@ -321,10 +360,21 @@ impl<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> Painter<'a, COL, DRAW> 
         }
     }
 
+    /// Sets the internal buffer used for drawing operations.
+    ///
+    /// This method allows the caller to provide a mutable slice of the pixel color type `COL` that the `Painter` will use
+    /// as its internal buffer. This can be used to optimize drawing by avoiding unnecessary memory allocations.
+    ///
+    /// This buffer is entirely optional, but can increase drawing performance significantly, especially for layered widgets such as
+    /// [crate::button::Button] or [crate::slider::Slider]
     fn set_buffer(&mut self, buffer: &'a mut [COL]) {
         self.buffer_raw = Some(UnsafeCell::new(buffer));
     }
 
+    /// Begin the drawing process in the given area.
+    ///
+    /// If a framebuffer is provided and of sufficient size, it gets used for subsequent drawing operations.
+    /// If not, the drawing operations are performed directly on the [DrawTarget].
     fn start_drawing(&mut self, area: &Rectangle) {
         if self.framebuf.is_some() {
             panic!("Framebuffer is already in use!");
@@ -353,6 +403,12 @@ impl<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> Painter<'a, COL, DRAW> 
         }
     }
 
+    /// Finalize the drawing process.
+    ///
+    /// This flushes the framebuffer to the draw target, if it was used in this drawing process.
+    ///
+    /// If a framebuffer is provided and of sufficient size, it gets used for subsequent drawing operations.
+    /// If not, the drawing operations are performed directly on the [DrawTarget].
     fn finalize(&mut self) -> GuiResult<()> {
         if let Some(buf) = &mut self.framebuf {
             buf.draw(self.target)
@@ -362,6 +418,14 @@ impl<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> Painter<'a, COL, DRAW> 
         Ok(())
     }
 
+    /// Draws the given [Drawable] to the [DrawTarget].
+    ///
+    /// If a framebuffer is available, the item is drawn to the framebuffer, and flushed to the target when [Painter::finalize()] is called.
+    /// Otherwise, it is drawn directly to the target.
+    ///
+    /// ## Returns
+    ///
+    /// Returns a `GuiResult` indicating whether the drawing was successful.
     fn draw(&mut self, item: &impl Drawable<Color = COL>) -> GuiResult<()> {
         if let Some(buffer) = &mut self.framebuf {
             item.draw(buffer)
@@ -373,6 +437,18 @@ impl<'a, COL: PixelColor, DRAW: DrawTarget<Color = COL>> Painter<'a, COL, DRAW> 
         Ok(())
     }
 
+    /// Creates a `Subpainter`, a new [Painter] instance, executes the provided closure with the sub-painter, and returns the result.
+    ///
+    /// This method is useful for creating a temporary [Painter] instance that can be modified for a subset of drawing operations on the main [DrawTarget].
+    /// The sub-painter's [DrawTarget] is a reference to the main [DrawTarget], so any drawing operations performed on the sub-painter will
+    /// be reflected in the main [DrawTarget].
+    ///
+    /// If the main [Painter] instance has a raw buffer set, the sub-painter will inherit that buffer.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if the main [Painter] instance is currently using its framebuffer, as sub-painters cannot be created when the framebuffer is in use.
+    /// Make sure to call [Painter::finalize()] before creating a sub-painter to prevent this.
     fn with_subpainter<'b, F>(&'b mut self, f: F) -> GuiResult<()>
     where
         F: FnOnce(Painter<'b, COL, DRAW>) -> GuiResult<()>,
@@ -407,6 +483,8 @@ impl<COL: PixelColor, DRAW: DrawTarget<Color = COL, Error = ERR>, ERR> DrawTarge
     type Color = COL;
     type Error = ERR;
 
+    // TODO: optimize by implementing the other methods too
+
     fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
     where
         I: IntoIterator<Item = Pixel<Self::Color>>,
@@ -433,6 +511,9 @@ pub enum Interaction {
 }
 
 impl Interaction {
+    /// Gets the point associated with the current interaction, if any.
+    ///
+    /// This method returns the point associated with the current interaction, such as the click, drag, release, or hover point. If the interaction is [Interaction::None], this method returns [None`.
     fn get_point(&self) -> Option<Point> {
         match self {
             Interaction::Click(p) => Some(*p),
@@ -444,6 +525,33 @@ impl Interaction {
     }
 }
 
+/// The main UI struct, responsible for managing the layout and rendering of the user interface.
+///
+/// The [Ui] struct is the core of the Kolibri GUI framework. It manages the following:
+/// - A [Painter] for rendering widgets to a [DrawTarget]
+/// - A [Placer] for managing widget layout and positioning
+/// - A [Style] for configuring the appearance of widgets
+/// - Interaction state tracking (clicks, drags, hovers, etc.)
+/// - Debug settings (e.g., debug color for visualizing widget bounds)
+///
+/// # Example
+///
+/// ```no_run
+/// use embedded_graphics::geometry::Size;
+/// use embedded_graphics::pixelcolor::Rgb565;
+/// use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+/// use kolibri_embedded_gui::style::medsize_rgb565_style;
+/// use kolibri_embedded_gui::ui::Ui;
+///
+/// let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+/// let output_settings = OutputSettingsBuilder::new().build();
+/// let mut window = Window::new("Kolibri Example", &output_settings);
+///
+/// let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+/// ui.clear_background().unwrap();
+/// // ... add widgets etc.
+/// ```
+///
 pub struct Ui<'a, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
@@ -459,29 +567,101 @@ where
     debug_color: Option<COL>,
 }
 
-// getters for Ui things
+// -- Getter methods for [Ui] --
 impl<DRAW, COL> Ui<'_, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
 {
-    /// Get the width of the UI's placer. Note that this **isn't the entire screen width**.
-    /// To get the screen width, use `get_screen_width()`.
+    /// Returns the width of the [Ui]'s placer.
+    ///
+    /// Note that this is not the entire screen width.
+    ///
+    /// ## Returns
+    ///
+    /// The width of the placer as a `u32`.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let width = ui.get_width();
+    /// println!("Placer width: {}", width);
+    /// ```
     pub fn get_width(&self) -> u32 {
         self.placer.bounds.width
     }
 
-    /// Get the width of the screen
+    /// Returns the width of the screen.
+    ///
+    /// This includes the UI's window border padding.
+    ///
+    /// ## Returns
+    ///
+    /// The screen width as a `u32`.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::geometry::Size;
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// let screen_width = ui.get_screen_width();
+    /// println!("Screen width: {}", screen_width);
+    /// ```
     pub fn get_screen_width(&self) -> u32 {
         self.bounds.size.width + self.style.spacing.window_border_padding.width * 2
     }
 }
 
+// -- Construction and widget addition methods --
 impl<'a, COL, DRAW> Ui<'a, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
 {
+    /// Creates a new [Ui] instance with the given drawable, bounds and style.
+    ///
+    /// The provided bounds are adjusted by the style's window border padding.
+    ///
+    /// ## Returns
+    ///
+    /// A new instance of [Ui].
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::geometry::Size;
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// use embedded_graphics::geometry::Dimensions;
+    /// let bounds = display.bounding_box();
+    /// let ui = Ui::new(&mut display, bounds, medsize_rgb565_style());
+    /// ```
     pub fn new(drawable: &'a mut DRAW, bounds: Rectangle, style: Style<COL>) -> Self {
         // set bounds to internal bounds (apply padding)
         let bounds = Rectangle::new(
@@ -495,7 +675,6 @@ where
         );
 
         // set up placer
-
         let placer = Placer::new(
             bounds.size,
             true,
@@ -513,71 +692,239 @@ where
         }
     }
 
+    /// Creates a new fullscreen [Ui] instance using the entire bounding box of the drawable.
+    ///
+    /// This is equivalent to calling [Ui::new] with the drawable's bounding box.
+    ///
+    /// ## Returns
+    ///
+    /// A new fullscreen instance of [Ui].
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// let ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// ```
     pub fn new_fullscreen(drawable: &'a mut DRAW, style: Style<COL>) -> Self {
         let bounds = drawable.bounding_box();
         Ui::new(drawable, bounds, style)
     }
 
+    /// Sets the current interaction for the [Ui].
+    ///
+    /// This interaction is used to update the state of widgets.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// ui.interact(Interaction::Click(Point::new(10, 10)));
+    /// ```
     pub fn interact(&mut self, interaction: Interaction) {
         self.interact = interaction;
     }
 
+    /// Adds a widget to the [Ui] and, if requested, clears the remaining horizontal space in the current row.
+    ///
+    /// After adding the widget, a new row is started.
+    ///
+    /// ## Returns
+    ///
+    /// A [Response] indicating the result of adding the widget.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let response = ui.add_and_clear_col_remainder(widget, true);
+    /// ```
     pub fn add_and_clear_col_remainder(&mut self, widget: impl Widget, clear: bool) -> Response {
-        let resp = self.add_raw(widget).unwrap_or_else(|e| {
-            // panic!("Failed to add widget to UI: {:?}", e);
-            Response::from_error(e)
-        });
+        let resp = self
+            .add_raw(widget)
+            .unwrap_or_else(|e| Response::from_error(e));
         if clear {
             self.clear_row_to_end().ok();
         }
-
         self.new_row();
-
         resp
     }
 
+    /// Adds a widget to the [Ui] and then starts a new row.
+    ///
+    /// The widget is drawn and its response is returned.
+    ///
+    /// ## Returns
+    ///
+    /// A [Response] indicating the result of adding the widget.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let response = ui.add(widget);
+    /// ```
     pub fn add(&mut self, widget: impl Widget) -> Response {
-        // draw widget. TODO: Add new auto ID
-        let resp = self.add_raw(widget).unwrap_or_else(|e| {
-            // panic!("Failed to add widget to UI: {:?}", e);
-            Response::from_error(e)
-        });
-
-        // create new row
+        let resp = self
+            .add_raw(widget)
+            .unwrap_or_else(|e| Response::from_error(e));
         self.new_row();
-
         resp
     }
 
+    /// Adds a widget centered horizontally in the current row of the [Ui].
+    ///
+    /// After drawing the widget, the row alignment is reset.
+    ///
+    /// ## Returns
+    ///
+    /// A [Response] indicating the result of adding the widget.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let response = ui.add_centered(widget);
+    /// ```
     pub fn add_centered(&mut self, widget: impl Widget) -> Response {
-        // draw widget. TODO: Add new auto ID
         let align = self.placer.align;
         self.placer.align = Align(HorizontalAlign::Center, align.1);
-        let resp = self.add_raw(widget).unwrap_or_else(|e| {
-            // panic!("Failed to add widget to UI: {:?}", e);
-            Response::from_error(e)
-        });
+        let resp = self
+            .add_raw(widget)
+            .unwrap_or_else(|e| Response::from_error(e));
         self.placer.align = align;
-
         self.new_row();
         resp
     }
 
-    /// Add a widget horizontally to the layout to the current row
+    /// Adds a widget to the current row of the [Ui] without starting a new row.
+    ///
+    /// Space is allocated for the next widget after this one.
+    ///
+    /// ## Returns
+    ///
+    /// A [Response] indicating the result of adding the widget.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let response = ui.add_horizontal(widget);
+    /// ```
     pub fn add_horizontal(&mut self, widget: impl Widget) -> Response {
-        // add widget (auto-expands row height potentially
-        let resp = self.add_raw(widget).unwrap_or_else(|e| {
-            // panic!("Failed to add widget to UI: {:?}", e);
-            Response::from_error(e)
-        });
-        // ignore space alignment errors (those are "fine". If wrapping is enabled,
-        // the next widget will be placed on the next row, without any space in between.)
+        let resp = self
+            .add_raw(widget)
+            .unwrap_or_else(|e| Response::from_error(e));
+        // Allocate space between widgets; ignore space errors.
         self.allocate_space_no_wrap(self.style().spacing.item_spacing)
             .ok();
-
         resp
     }
 
+    /// Draws a widget directly to the [Ui] without changing the layout.
+    ///
+    /// If a debug color is set, the widget's bounding area is drawn with that color.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] wrapping a [Response] for the drawn widget.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// match ui.add_raw(widget) {
+    ///     Ok(response) => { /* widget drawn successfully */ },
+    ///     Err(e) => { /* handle error */ },
+    /// }
+    /// ```
     pub fn add_raw(&mut self, mut widget: impl Widget) -> GuiResult<Response> {
         let res = widget.draw(self);
         if let (Ok(res), Some(debug_color)) = (&res, self.debug_color) {
@@ -595,30 +942,178 @@ where
         res
     }
 
+    /// Returns an immutable reference to the current style of the [Ui].
+    ///
+    /// ## Returns
+    ///
+    /// A reference to the [Style].
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let current_style = ui.style();
+    /// ```
     pub fn style(&self) -> &Style<COL> {
         &self.style
     }
 
+    /// Returns a mutable reference to the current style of the [Ui].
+    ///
+    /// ## Returns
+    ///
+    /// A mutable reference to the [Style].
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let style = ui.style_mut();
+    /// style.background_color = Rgb565::BLACK;
+    /// ```
     pub fn style_mut(&mut self) -> &mut Style<COL> {
         &mut self.style
     }
 
+    /// Advances the layout to a new row in the [Ui].
+    ///
+    /// This method uses the default spacing and widget height from the current style.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.new_row();
+    /// ```
     pub fn new_row(&mut self) {
         self.new_row_raw(self.style().spacing.item_spacing.height);
-
         self.new_row_raw(self.style().default_widget_height);
     }
 
+    /// Advances the layout to a new row in the [Ui] with the specified height.
+    ///
+    /// ## Parameters
+    ///
+    /// - `height`: The height for the new row.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.new_row_raw(20);
+    /// ```
     pub fn new_row_raw(&mut self, height: u32) {
         self.placer.new_row(height);
     }
 
-    /// Increase the height of the current row to the given height, if it is
-    /// larger than the current height
+    /// Expands the current row height of the [Ui] to at least the given height.
+    ///
+    /// If the current row height is less than `height`, it is increased.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.expand_row_height(30);
+    /// ```
     pub fn expand_row_height(&mut self, height: u32) {
         self.placer.expand_row_height(height);
     }
 
+    /// Draws a [Drawable] item directly using the [Ui]'s underlying draw target.
+    ///
+    /// ## Returns
+    ///
+    /// The output produced by drawing the item, or an error if drawing fails.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// # use embedded_graphics::primitives::PrimitiveStyle;
+    /// # let rectangle_shape = Rectangle::new(Point::new(50, 0), Size::new(200, 150));
+    /// # // Make it drawable with a filled red style
+    /// # let rectangle = rectangle_shape.into_styled(PrimitiveStyle::with_fill(Rgb565::RED));
+    /// let result = ui.draw_raw(&rectangle);
+    /// ```
     pub fn draw_raw<OUT>(
         &mut self,
         to_draw: &impl Drawable<Color = COL, Output = OUT>,
@@ -626,12 +1121,62 @@ where
         to_draw.draw(self.painter.target)
     }
 
-    // painter functions
-
+    /// Returns the remaining available space for widget placement in the [Ui].
+    ///
+    /// ## Returns
+    ///
+    /// A [Size] representing the available width and height.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let space = ui.space_available();
+    /// println!("Available space: {:?}", space);
+    /// ```
     pub fn space_available(&self) -> Size {
         self.placer.space_available()
     }
 
+    /// Checks if the current interaction occurs within the specified area.
+    ///
+    /// ## Returns
+    ///
+    /// The [Interaction] if the interaction's point is within the area, otherwise [Interaction::None].
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// # let some_rectangle = Rectangle::new(Point::new(50, 0), Size::new(200, 150));
+    /// let interaction = ui.check_interact(some_rectangle);
+    /// ```
     pub fn check_interact(&self, area: Rectangle) -> Interaction {
         if self
             .interact
@@ -645,11 +1190,64 @@ where
         }
     }
 
-    /// For now, only stub method.
+    /// Allocates an exact space in the [Ui] for a widget of the desired size.
+    ///
+    /// This method currently wraps [Ui::allocate_space] without extra logic.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] containing an [InternalResponse] with the allocated area and interaction.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let allocation = ui.allocate_exact_size(Size::new(50, 30));
+    /// ```
     pub fn allocate_exact_size(&mut self, desired_size: Size) -> GuiResult<InternalResponse> {
         self.allocate_space(desired_size)
     }
 
+    /// Allocates space in the [Ui] for a widget of the desired size, with wrapping if needed.
+    ///
+    /// The allocated area is adjusted by the [Ui]'s bounds.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] containing an [InternalResponse] with the allocated rectangle and interaction.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let allocation = ui.allocate_space(Size::new(100, 40));
+    /// ```
     pub fn allocate_space(&mut self, desired_size: Size) -> GuiResult<InternalResponse> {
         let rect = self.placer.next(desired_size).map(|mut rect| {
             rect.top_left.add_assign(self.bounds.top_left);
@@ -663,6 +1261,33 @@ where
         })
     }
 
+    /// Allocates space in the [Ui] for a widget of the desired size without wrapping.
+    ///
+    /// The allocated area is adjusted by the [Ui]'s bounds.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] containing an [InternalResponse] with the allocated rectangle and interaction.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let allocation = ui.allocate_space_no_wrap(Size::new(80, 25));
+    /// ```
     pub fn allocate_space_no_wrap(&mut self, desired_size: Size) -> GuiResult<InternalResponse> {
         let area = self.placer.next_no_wrap(desired_size).map(|mut rect| {
             rect.top_left.add_assign(self.bounds.top_left);
@@ -677,28 +1302,129 @@ where
         })
     }
 
+    /// Returns the current row height used in the [Ui]'s layout.
+    ///
+    /// ## Returns
+    ///
+    /// The current row height as a `u32`.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let row_height = ui.get_row_height();
+    /// println!("Row height: {}", row_height);
+    /// ```
     pub fn get_row_height(&self) -> u32 {
         self.placer.row_height()
     }
 }
 
-// Clearing impls
+// -- Clearing methods --
 impl<COL, DRAW> Ui<'_, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
 {
-    /// Return whether the UI was background-cleared this frame
+    /// Returns whether the [Ui]'s background was cleared this frame.
+    ///
+    /// ## Returns
+    ///
+    /// `true` if the background was cleared, `false` otherwise.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// if ui.cleared() {
+    ///     println!("Background cleared");
+    /// }
+    /// ```
     pub fn cleared(&self) -> bool {
         self.cleared
     }
 
+    /// Clears the specified area in the [Ui] using the background color.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] indicating success or error.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.clear_area(Rectangle::new(Point::new(0,0), Size::new(100, 50))).unwrap();
+    /// ```
     pub fn clear_area(&mut self, area: Rectangle) -> GuiResult<()> {
         self.draw(&area.into_styled(PrimitiveStyle::with_fill(self.style.background_color)))
             .map_err(|_| GuiError::DrawError(Some("Couldn't clear area")))
     }
 
-    /// Clear the current row with the background color
+    /// Clears the current row in the [Ui] with the background color.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] indicating whether the row was successfully cleared.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.clear_row().unwrap();
+    /// ```
     pub fn clear_row(&mut self) -> GuiResult<()> {
         let row_height = self.placer.row_height();
         let row_rect = Rectangle::new(
@@ -708,14 +1434,33 @@ where
         self.clear_area(row_rect)
     }
 
-    /// Clear the row to the end of the screen. This is useful for clearing the rendering
-    /// remains of partially drawn widgets and such (e.g. clearing after a label's width went down)
+    /// Clears the current row from the current widget position to the end of the row.
     ///
-    /// As this is fairly expensive, it should only be used when necessary.
+    /// This is useful for removing any rendering remains of partially drawn widgets.
     ///
-    /// Sidenote: This clears the entire row to the end, taking the row_height into account.
-    /// What that means is that - in general - you shoud use this **after** adding a widget,
-    /// as the row height will be increased to the widget's height.
+    /// ## Returns
+    ///
+    /// A [GuiResult] indicating success or error.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.clear_row_to_end().unwrap();
+    /// ```
     pub fn clear_row_to_end(&mut self) -> GuiResult<()> {
         let col_height = self.placer.row_height;
         let col_rect = Rectangle::new(
@@ -732,15 +1477,33 @@ where
         self.clear_area(col_rect)
     }
 
-    /// Clear the screen down to the bottom. This is useful for clearing the rendering
-    /// remains of partially drawn widgets and such (e.g. clearing after a label's width went down),
-    /// especially for multiple rows at the same time.
+    /// Clears the [Ui] from the current placement position down to the bottom of the screen.
     ///
-    /// As this is fairly expensive, it should only be used when necessary.
+    /// **Warning:** This clears the entire screen area from the current row downwards.
     ///
-    /// Note that this clears **the entire screen** down from the current placer position,
-    /// so call this at the start of a new row *before drawing on it* if you want to draw on the
-    /// cleared area, otherwise it will erase any widgets you already drew.
+    /// ## Returns
+    ///
+    /// A [GuiResult] indicating success or error.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.clear_to_bottom().unwrap();
+    /// ```
     pub fn clear_to_bottom(&mut self) -> GuiResult<()> {
         self.clear_area(Rectangle::new(
             Point::new(0, self.placer.pos.y),
@@ -751,6 +1514,33 @@ where
         ))
     }
 
+    /// Clears the entire background of the [Ui] with the background color defined in the style.
+    ///
+    /// This method updates the [Ui]'s cleared flag.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] indicating success or error.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.clear_background().unwrap();
+    /// ```
     pub fn clear_background(&mut self) -> GuiResult<()> {
         self.cleared = true;
 
@@ -776,44 +1566,207 @@ where
     }
 }
 
-// Drawing Impl
+// -- Drawing methods --
 impl<'a, COL, DRAW> Ui<'a, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
 {
+    /// Sets the internal drawing buffer for the [Ui].
+    ///
+    /// This buffer is used for optimized drawing and is optional.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let mut buffer = [Rgb565::BLACK; 10000];
+    /// ui.set_buffer(&mut buffer);
+    /// ```
     pub fn set_buffer(&mut self, buffer: &'a mut [COL]) {
         self.painter.set_buffer(buffer);
     }
 
+    /// Begins the drawing process for a specified area in the [Ui].
+    ///
+    /// This initializes the drawing buffer (if set) and clears it with the background color.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if the underlying [Painter] is already using its framebuffer.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let draw_area = Rectangle::new(Point::new(30, 20), Size::new(100, 150));
+    /// ui.start_drawing(&draw_area);
+    /// ```
     pub fn start_drawing(&mut self, area: &Rectangle) {
         self.painter.start_drawing(area);
         self.painter.clear_buffer(self.style.background_color);
     }
 
+    /// Clears the current drawing buffer with the specified color.
+    ///
+    /// ## Returns
+    ///
+    /// `true` if the buffer was successfully cleared, or `false` if no buffer is present.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let cleared = ui.clear_buffer_raw(Rgb565::BLACK);
+    /// println!("Buffer cleared: {}", cleared);
+    /// ```
     pub fn clear_buffer_raw(&mut self, color: COL) -> bool {
         self.painter.clear_buffer(color)
     }
 
+    /// Finalizes the drawing process for the [Ui].
+    ///
+    /// This flushes any buffered drawing to the underlying draw target.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] indicating success or error.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.finalize().unwrap();
+    /// ```
     pub fn finalize(&mut self) -> GuiResult<()> {
         self.painter.finalize()
     }
 
+    /// Draws a [Drawable] item onto the [Ui].
+    ///
+    /// If a buffer is active, the item is drawn to the buffer; otherwise, it is drawn directly.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] indicating whether the drawing operation was successful.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// # use embedded_graphics::primitives::PrimitiveStyle;
+    /// # let rectangle_shape = Rectangle::new(Point::new(50, 0), Size::new(200, 150));
+    /// # // Make it drawable with a filled red style
+    /// # let rectangle = rectangle_shape.into_styled(PrimitiveStyle::with_fill(Rgb565::RED));
+    /// ui.draw(&rectangle).unwrap();
+    /// ```
     pub fn draw(&mut self, item: &impl Drawable<Color = COL>) -> GuiResult<()> {
         self.painter.draw(item)
     }
 }
 
-// SubUI impl
-
+// -- Sub-[Ui] methods --
 impl<COL, DRAW> Ui<'_, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
 {
-    /// Create a sub-UI with the given bounds, where you can modify all values. This is useful for
-    /// creating a sub-UI with a different style, or drawing to a screen area outside (or on top)
-    /// of the normal UI.
+    /// Creates a sub-[Ui] with the given bounds without performing extra bounds checks.
+    ///
+    /// This sub-[Ui] is useful for drawing to a specific area with its own layout and style.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] indicating success or error.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// let sub_bounds = Rectangle::new(Point::new(50, 0), Size::new(200, 150));
+    /// ui.unchecked_sub_ui(sub_bounds, |sub_ui| {
+    ///     sub_ui.add(widget);
+    ///     Ok(())
+    /// }).unwrap();
+    /// ```
     pub fn unchecked_sub_ui<F>(&mut self, bounds: Rectangle, f: F) -> GuiResult<()>
     where
         F: FnOnce(&mut Ui<DRAW, COL>) -> GuiResult<()>,
@@ -828,7 +1781,6 @@ where
                 .saturating_sub(self.style.spacing.window_border_padding * 2),
         );
 
-        // set up placer
         let placer = Placer::new(
             bounds.size,
             true,
@@ -851,6 +1803,36 @@ where
         Ok(())
     }
 
+    /// Creates a sub-[Ui] that shares the same bounds as the parent [Ui].
+    ///
+    /// Changes to the sub-[Ui]'s layout are reflected in the parent.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] indicating success or error.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.sub_ui(|sub_ui| {
+    ///     sub_ui.add(widget);
+    ///     Ok(())
+    /// }).unwrap();
+    /// ```
     pub fn sub_ui<F>(&mut self, f: F) -> GuiResult<()>
     where
         F: FnOnce(&mut Ui<DRAW, COL>) -> GuiResult<()>,
@@ -866,24 +1848,49 @@ where
                 debug_color: self.debug_color,
             };
             let res = (f)(&mut sub_ui);
-
             self.placer = sub_ui.placer;
-
             res
         })?;
 
         Ok(())
     }
 
+    /// Creates a right-side panel sub-[Ui] with the specified width.
+    ///
+    /// If `allow_smaller` is false, an error is returned if there is insufficient space.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] indicating success or error.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.right_panel_ui(100, false, |sub_ui| {
+    ///     sub_ui.add(widget);
+    ///     Ok(())
+    /// }).unwrap();
+    /// ```
     pub fn right_panel_ui<F>(&mut self, width: u32, allow_smaller: bool, f: F) -> GuiResult<()>
     where
         F: FnOnce(&mut Ui<DRAW, COL>) -> GuiResult<()>,
     {
-        // check bounds and remaining space of placer
         let bounds = self.placer.bounds;
-
         let y = self.placer.pos.y as u32;
-
         let max_width = bounds.width - self.placer.pos.x as u32;
         let max_height = bounds.height - y;
 
@@ -904,16 +1911,41 @@ where
         self.unchecked_sub_ui(area, f)
     }
 
-    /// Create a sub-UI with the given bounds in the center of the screen.
-    /// This is very useful to draw OVER other UI elements. In other words:
-    /// When using this, make sure that you don't update the UI behind it if your display allows it,
-    /// or you will get flickering.
+    /// Creates a centered sub-[Ui] panel with the specified width and height.
+    ///
+    /// The panel is centered within the current bounds. An error is returned if the dimensions exceed the available space.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] indicating success or error.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.central_centered_panel_ui(200, 150, |sub_ui| {
+    ///     sub_ui.add(widget);
+    ///     Ok(())
+    /// }).unwrap();
+    /// ```
     pub fn central_centered_panel_ui<F>(&mut self, width: u32, height: u32, f: F) -> GuiResult<()>
     where
         F: FnOnce(&mut Ui<DRAW, COL>) -> GuiResult<()>,
     {
         let bounds = self.placer.bounds;
-
         let max_width = bounds.width;
         let max_height = bounds.height;
 
@@ -940,13 +1972,37 @@ where
     }
 }
 
-// debug drawing impl
-
+// -- Debug drawing methods --
 impl<COL, DRAW> Ui<'_, DRAW, COL>
 where
     DRAW: DrawTarget<Color = COL>,
     COL: PixelColor,
 {
+    /// Draws a debug outline around the [Ui]'s bounds using the specified color.
+    ///
+    /// ## Returns
+    ///
+    /// A [GuiResult] indicating success or error.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.draw_bounds_debug(Rgb565::RED).unwrap();
+    /// ```
     pub fn draw_bounds_debug(&mut self, color: COL) -> GuiResult<()> {
         let bounds = self.bounds;
         bounds
@@ -960,6 +2016,29 @@ where
             .map_err(|_| GuiError::DrawError(Some("Couldn't draw bounds")))
     }
 
+    /// Enables debug drawing of widget bounds in the [Ui] using the specified color.
+    ///
+    /// Once set, all added widgets will have their bounds outlined in this color for debugging.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # let mut widget = Label::new("Hi");
+    /// ui.draw_widget_bounds_debug(Rgb565::GREEN);
+    /// ```
     pub fn draw_widget_bounds_debug(&mut self, color: COL) {
         self.debug_color = Some(color);
     }

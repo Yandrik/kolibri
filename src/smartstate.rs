@@ -1,24 +1,53 @@
+/// A container for an optional mutable reference to a value.
+///
+/// This container is primarily used with [`Smartstate`] to manage widget state and redraw behavior.
+/// It provides a safe way to handle optional mutable references and state comparisons.
+///
+/// # Example
+///
+/// use kolibri_embedded_gui::smartstate::{Container, Smartstate};
+///
+/// let mut state = Smartstate::empty();
+/// let mut container = Container::new(&mut state);
+///
+/// // Modify the contained state
+/// container.modify(|st| *st = Smartstate::state(1));
+///
 pub struct Container<'a, T> {
     optional_something: Option<&'a mut T>,
 }
 
 impl<'a, T> Container<'a, T> {
+    /// Creates an empty container with no inner value.
     pub fn empty() -> Self {
         Self {
             optional_something: None,
         }
     }
 
+    /// Creates a new container with the given mutable reference.
     pub fn new(inner: &'a mut T) -> Self {
         Self {
             optional_something: Some(inner),
         }
     }
 
+    /// Sets the container's inner value to the provided mutable reference.
     pub fn set(&mut self, val: &'a mut T) {
         self.optional_something = Some(val);
     }
 
+    /// Applies a modification function to the contained value if it exists.
+    ///
+    /// # Example
+    ///
+    /// # use kolibri_embedded_gui::smartstate::{Container, Smartstate};
+    /// let mut state = Smartstate::empty();
+    /// let mut container = Container::new(&mut state);
+    ///
+    /// // Update state when widget is active
+    /// container.modify(|st| *st = Smartstate::state(1));
+    ///
     pub fn modify(&mut self, modify: impl FnOnce(&mut T)) {
         if let Some(inner) = self.optional_something.as_mut() {
             (modify)(*inner);
@@ -27,6 +56,9 @@ impl<'a, T> Container<'a, T> {
 }
 
 impl<T: Clone> Container<'_, T> {
+    /// Returns a clone of the contained value if it exists.
+    ///
+    /// Commonly used to get the previous state before updating.
     pub fn clone_inner(&self) -> Option<T> {
         self.optional_something
             .as_ref()
@@ -35,6 +67,7 @@ impl<T: Clone> Container<'_, T> {
 }
 
 impl<T: PartialEq> Container<'_, T> {
+    /// Compares the contained value with another value if it exists.
     pub fn eq_inner(&self, other: &T) -> bool {
         if let Some(inner) = self.optional_something.as_ref() {
             *inner == other
@@ -164,27 +197,33 @@ impl<T: PartialEq> Container<'_, T> {
 pub struct Smartstate(u32, bool);
 
 impl Smartstate {
+    /// Creates an empty state that will trigger a redraw.
     pub fn empty() -> Self {
         Self(0, false)
     }
 
+    /// Creates a new state with the given state ID.
     pub fn state(state: u32) -> Self {
         Self(state, true)
     }
 
+    /// Sets the current state ID and marks it as valid.
     pub fn set_state(&mut self, state: u32) {
         self.0 = state;
         self.1 = true;
     }
 
+    /// Returns true if this is an empty/invalid state.
     pub fn is_empty(&self) -> bool {
         !self.1
     }
 
+    /// Returns true if this matches the given state ID and is valid.
     pub fn is_state(&self, state: u32) -> bool {
         self.1 && self.0 == state
     }
 
+    /// Forces a redraw by invalidating the current state.
     pub fn force_redraw(&mut self) {
         self.1 = false;
     }
@@ -196,12 +235,31 @@ impl PartialEq for Smartstate {
     }
 }
 
+/// Manages a collection of smartstates for multiple widgets.
+///
+/// The provider maintains an array of smartstates and tracks the current position.
+/// Widgets request smartstates sequentially using methods like [`nxt()`](SmartstateProvider::nxt).
+///
+/// # Example
+///
+/// use kolibri_embedded_gui::smartstate::SmartstateProvider;
+///
+/// let mut provider = SmartstateProvider::<10>::new();
+///
+/// // Get smartstates for widgets
+/// let first = provider.nxt();
+/// let second = provider.nxt();
+///
+/// // Reset counter for next frame
+/// provider.restart_counter();
+///
 pub struct SmartstateProvider<const N: usize = 16> {
     states: [Smartstate; N],
     pos: usize,
 }
 
 impl<const N: usize> SmartstateProvider<N> {
+    /// Creates a new provider with N empty smartstates.
     #[inline(always)]
     pub fn new() -> Self {
         Self {
@@ -210,16 +268,20 @@ impl<const N: usize> SmartstateProvider<N> {
         }
     }
 
+    /// Resets the position counter to 0.
+    /// Should be called at the start of each frame.
     #[inline(always)]
     pub fn restart_counter(&mut self) {
         self.pos = 0;
     }
 
+    /// Returns the total number of smartstates (N).
     #[inline(always)]
     pub fn size(&self) -> usize {
         N
     }
 
+    /// Returns the current position in the smartstate array.
     pub fn get_pos(&self) -> usize {
         self.pos
     }
@@ -237,6 +299,10 @@ impl<const N: usize> SmartstateProvider<N> {
             )
     }
 
+    /// Gets the next smartstate and advances the position counter.
+    ///
+    /// # Panics
+    /// Panics if no more smartstates are available (pos >= N).
     #[inline(always)]
     pub fn nxt(&mut self) -> &mut Smartstate {
         let state = self
@@ -247,6 +313,10 @@ impl<const N: usize> SmartstateProvider<N> {
         state
     }
 
+    /// Gets the current smartstate (at pos-1).
+    ///
+    /// # Panics
+    /// Panics if called before [`nxt()`](SmartstateProvider::nxt).
     #[inline(always)]
     pub fn current(&mut self) -> &mut Smartstate {
         self.states
@@ -254,6 +324,10 @@ impl<const N: usize> SmartstateProvider<N> {
             .expect("ERROR: Smartstate Index out of range! Did you call current() before nxt()?")
     }
 
+    /// Gets the previous smartstate (at pos-2).
+    ///
+    /// # Panics
+    /// Panics if called before at least two [`nxt()`](SmartstateProvider::nxt) calls.
     #[inline(always)]
     pub fn prev(&mut self) -> &mut Smartstate {
         self.states
@@ -261,6 +335,10 @@ impl<const N: usize> SmartstateProvider<N> {
             .expect("ERROR: Smartstate Index out of range! Did you call prev() before 2 * nxt()?")
     }
 
+    /// Peeks at the next smartstate without advancing the counter.
+    ///
+    /// # Panics
+    /// Panics if no more smartstates are available.
     #[inline(always)]
     pub fn peek(&mut self) -> &mut Smartstate {
         self.states
@@ -268,16 +346,22 @@ impl<const N: usize> SmartstateProvider<N> {
             .expect("ERROR: Smartstate Index out of range! Did you call peek() at max capacity?")
     }
 
+    /// Advances the position counter by 1.
     #[inline(always)]
     pub fn skip_one(&mut self) {
         self.skip(1);
     }
 
+    /// Advances the position counter by n.
     #[inline(always)]
     pub fn skip(&mut self, n: usize) {
         self.pos += n;
     }
 
+    /// Gets a smartstate at the specified absolute position.
+    ///
+    /// # Panics
+    /// Panics if pos is out of bounds.
     #[inline(always)]
     pub fn get(&mut self, pos: usize) -> &mut Smartstate {
         self.states
@@ -285,6 +369,7 @@ impl<const N: usize> SmartstateProvider<N> {
             .expect("ERROR: Invalid index in SmartstateProvider!")
     }
 
+    /// Forces a redraw of all smartstates.
     #[inline(always)]
     pub fn force_redraw_all(&mut self) {
         for state in self.states.iter_mut() {

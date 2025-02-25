@@ -7,7 +7,6 @@ Kolibri is designed to be dead simple.
 ## Quick Overview
 
 > All examples used in this section can also be found in the `examples` folder.
-> Large amounts of documentation aren't available yet, but will be added before Kolibri reaches 0.1.0
 
 To get started, add Kolibri to your project using `cargo add kolibri-embedded-gui`, create an `Ui` with a mutable reference to your `embedded-graphics` `DrawTarget`, and you're ready to go!
 

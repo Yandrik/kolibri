@@ -1,4 +1,13 @@
-// File: kolibri-embedded-gui/src/toggle_switch.rs
+//! # Toggle Switch
+//!
+//! A customizable toggle switch widget that provides a simple on/off control.
+//!
+//! The toggle switch provides a slider-style control similar to those found in mobile applications,
+//! with a background track and sliding knob that moves between on/off positions.
+//! The widget supports customizable dimensions, colors based on theme, and hover/interaction states.
+//!
+//! This widget is part of the Kolibri embedded GUI framework's core widget set and integrates
+//! with the framework's [Smartstate] system for efficient rendering.
 
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiError, GuiResult, Interaction, Response, Ui, Widget};
@@ -10,6 +19,46 @@ use embedded_graphics::primitives::{
     Circle, CornerRadii, PrimitiveStyleBuilder, Rectangle, RoundedRectangle,
 };
 
+/// A toggle switch widget that provides an animated on/off control with a sliding knob.
+///
+/// The [ToggleSwitch] widget creates a visual control that allows users to toggle between
+/// two states (on/off). It features a sliding knob that moves horizontally across a track
+/// to indicate the current state.
+///
+/// The widget supports:
+/// - Customizable width and height
+/// - Theme-based colors for active/inactive states
+/// - Interactive hover and click effects
+/// - Integration with Kolibri's smartstate system for efficient rendering
+///
+/// ## Examples
+///
+/// ```no_run
+/// # use embedded_graphics::pixelcolor::Rgb565;
+/// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+/// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+/// # use kolibri_embedded_gui::ui::Ui;
+/// # use embedded_graphics::prelude::*;
+/// # use embedded_graphics::primitives::Rectangle;
+/// # use embedded_iconoir::prelude::*;
+/// # use kolibri_embedded_gui::ui::*;
+/// # use kolibri_embedded_gui::label::*;
+/// # use kolibri_embedded_gui::smartstate::*;
+/// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+/// # let output_settings = OutputSettingsBuilder::new().build();
+/// # let mut window = Window::new("Kolibri Example", &output_settings);
+/// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+/// # use kolibri_embedded_gui::toggle_switch::ToggleSwitch;
+/// let mut state = false;
+///
+/// // Create a basic toggle switch
+/// ui.add(ToggleSwitch::new(&mut state));
+///
+/// // Create a custom-sized toggle switch
+/// ui.add(ToggleSwitch::new(&mut state)
+///     .width(60)
+///     .height(30));
+/// ```
 pub struct ToggleSwitch<'a> {
     active: &'a mut bool,
     smartstate: Container<'a, Smartstate>,
@@ -18,29 +67,88 @@ pub struct ToggleSwitch<'a> {
 }
 
 impl<'a> ToggleSwitch<'a> {
+    /// Creates a new [ToggleSwitch] instance with the provided mutable reference to the active state.
+    ///
+    /// The new [ToggleSwitch] will have a default width of 50 pixels and a height of 25 pixels.
     pub fn new(active: &'a mut bool) -> ToggleSwitch<'a> {
         ToggleSwitch {
             active,
             smartstate: Container::empty(),
-            width: 50,  // Default width
-            height: 25, // Default height
+            width: 50,
+            height: 25,
         }
     }
 
+    /// Adds a [Smartstate] to the toggle switch for incremental redrawing.
+    ///
+    /// The smartstate is used to efficiently manage the rendering of the toggle switch.
+    /// Through this [Smartstate], the toggle switch can leverage
+    /// the smartstate system to avoid unnecessary redraws and improve performance.
     pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
         self.smartstate.set(smartstate);
         self
     }
 
-    /// Set the width of the toggle switch.
-    /// Minimum width is enforced to ensure proper rendering.
+    /// Sets the width of the toggle switch.
+    ///
+    /// The width determines the horizontal size of the switch's track. A minimum
+    /// width of 30 pixels is enforced to ensure proper rendering and usability.
+    ///
+    /// ## Examples
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # use kolibri_embedded_gui::smartstate::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # use kolibri_embedded_gui::toggle_switch::ToggleSwitch;
+    /// let mut state = false;
+    /// ui.add(ToggleSwitch::new(&mut state).width(60));
+    /// ```
     pub fn width(mut self, width: u32) -> Self {
         self.width = max(width, 30); // Enforce a minimum width
         self
     }
 
-    /// Set the height of the toggle switch.
-    /// Minimum height is enforced to ensure proper rendering.
+    /// Sets the height of the toggle switch.
+    ///
+    /// The height determines the vertical size of the switch's track and knob.
+    /// A minimum height of 15 pixels is enforced to ensure proper rendering and usability.
+    ///
+    /// ## Examples
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # use kolibri_embedded_gui::smartstate::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # use kolibri_embedded_gui::toggle_switch::ToggleSwitch;
+    /// let mut state = false;
+    ///
+    /// loop {
+    ///     // [...]
+    ///     ui.add(ToggleSwitch::new(&mut state).height(30).width(60));
+    /// }
+    /// ```
     pub fn height(mut self, height: u32) -> Self {
         self.height = max(height, 15); // Enforce a minimum height
         self

@@ -1,4 +1,5 @@
 #![cfg_attr(not(test), no_std)]
+#![cfg_attr(not(doctest), doc = include_str!("../README.md"))]
 
 pub mod button;
 pub mod checkbox;
