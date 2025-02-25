@@ -775,9 +775,7 @@ where
     /// let response = ui.add_and_clear_col_remainder(widget, true);
     /// ```
     pub fn add_and_clear_col_remainder(&mut self, widget: impl Widget, clear: bool) -> Response {
-        let resp = self
-            .add_raw(widget)
-            .unwrap_or_else(|e| Response::from_error(e));
+        let resp = self.add_raw(widget).unwrap_or_else(Response::from_error);
         if clear {
             self.clear_row_to_end().ok();
         }
@@ -813,9 +811,7 @@ where
     /// let response = ui.add(widget);
     /// ```
     pub fn add(&mut self, widget: impl Widget) -> Response {
-        let resp = self
-            .add_raw(widget)
-            .unwrap_or_else(|e| Response::from_error(e));
+        let resp = self.add_raw(widget).unwrap_or_else(Response::from_error);
         self.new_row();
         resp
     }
@@ -850,9 +846,7 @@ where
     pub fn add_centered(&mut self, widget: impl Widget) -> Response {
         let align = self.placer.align;
         self.placer.align = Align(HorizontalAlign::Center, align.1);
-        let resp = self
-            .add_raw(widget)
-            .unwrap_or_else(|e| Response::from_error(e));
+        let resp = self.add_raw(widget).unwrap_or_else(Response::from_error);
         self.placer.align = align;
         self.new_row();
         resp
@@ -886,9 +880,7 @@ where
     /// let response = ui.add_horizontal(widget);
     /// ```
     pub fn add_horizontal(&mut self, widget: impl Widget) -> Response {
-        let resp = self
-            .add_raw(widget)
-            .unwrap_or_else(|e| Response::from_error(e));
+        let resp = self.add_raw(widget).unwrap_or_else(Response::from_error);
         // Allocate space between widgets; ignore space errors.
         self.allocate_space_no_wrap(self.style().spacing.item_spacing)
             .ok();

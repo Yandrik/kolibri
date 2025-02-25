@@ -1,4 +1,6 @@
 #![cfg_attr(not(test), no_std)]
+#![allow(clippy::needless_doctest_main)]
+#![allow(clippy::doc_nested_refdefs)]
 #![cfg_attr(not(doctest), doc = include_str!("../README.md"))]
 
 pub mod button;
