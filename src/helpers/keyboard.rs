@@ -1,3 +1,7 @@
+//! Helper for drawing entire on-screen keyboard to the GUI.
+//!
+//! This module contains keyboard layouts for different languages and regions (QWERTY, QWERTZ, AZERTY),
+//! along with functionality to draw an interactive on-screen keyboard.
 use crate::button::Button;
 use crate::iconbutton::IconButton;
 use crate::smartstate::SmartstateProvider;

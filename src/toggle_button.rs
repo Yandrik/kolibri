@@ -1,3 +1,14 @@
+//! # Toggle Button Widget
+//!
+//! A customizable toggle button widget that provides a clickable on/off control.
+//!
+//! The toggle button provides a traditional button-style control that maintains its state,
+//! featuring different visual styles for active and inactive states. It supports text labels
+//! and integrates with the framework's theming system for consistent appearance.
+//!
+//! This widget is part of the Kolibri embedded GUI framework's core widget set and integrates
+//! with the framework's [Smartstate] system for efficient rendering.
+//!
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiError, GuiResult, Interaction, Response, Ui, Widget};
 use core::cmp::max;
@@ -9,6 +20,37 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
 use embedded_graphics::text::{Baseline, Text};
 
+/// A button widget that can be toggled on and off.
+///
+/// [ToggleButton] provides a clickable button that maintains an on/off state. When clicked,
+/// it toggles between these states and displays different visual styles accordingly.
+/// The button includes a text label and supports various interaction states like hover and click.
+///
+/// ## Examples
+///
+/// ```no_run
+/// # use embedded_graphics::pixelcolor::Rgb565;
+/// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+/// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+/// # use kolibri_embedded_gui::ui::Ui;
+/// # use embedded_graphics::prelude::*;
+/// # use embedded_graphics::primitives::Rectangle;
+/// # use embedded_iconoir::prelude::*;
+/// # use kolibri_embedded_gui::ui::*;
+/// # use kolibri_embedded_gui::label::*;
+/// # use kolibri_embedded_gui::smartstate::*;
+/// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+/// # let output_settings = OutputSettingsBuilder::new().build();
+/// # let mut window = Window::new("Kolibri Example", &output_settings);
+/// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+/// # use kolibri_embedded_gui::toggle_button::ToggleButton;
+/// let mut state = false;
+///
+/// loop {
+///     // [...]
+///     ui.add(ToggleButton::new("Toggle Me", &mut state));
+/// }
+/// ```
 pub struct ToggleButton<'a> {
     label: &'a str,
     active: &'a mut bool,
@@ -16,6 +58,44 @@ pub struct ToggleButton<'a> {
 }
 
 impl<'a> ToggleButton<'a> {
+    /// Creates a new [ToggleButton] with the given label and active state.
+    ///
+    /// The `label` parameter is the text to display on the button, and the `active`
+    /// parameter is a mutable reference to a boolean that tracks the on/off state
+    /// of the button.
+    ///
+    /// ## Examples
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # use kolibri_embedded_gui::smartstate::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # use kolibri_embedded_gui::toggle_button::ToggleButton;
+    /// let mut state = false;
+    /// let mut smartstateProvider = SmartstateProvider::<20>::new();
+    ///
+    /// loop {
+    ///     // [...]
+    ///     if ui.add(ToggleButton::new("Toggle Me", &mut state)).changed() {
+    ///         // handle toggle
+    ///     }
+    ///     // or with smartstate:
+    ///    if ui.add(ToggleButton::new("Toggle Me", &mut state).smartstate(smartstateProvider.nxt())).changed() {
+    ///        // handle toggle
+    ///    }
+    ///
+    /// }
     pub fn new(label: &'a str, active: &'a mut bool) -> ToggleButton<'a> {
         ToggleButton {
             label,
@@ -24,6 +104,12 @@ impl<'a> ToggleButton<'a> {
         }
     }
 
+    /// Attaches a [Smartstate] to the toggle button for incremental redrawing.
+    ///
+    /// Smartstates enable efficient rendering by tracking the button's visual state
+    /// and only redrawing when necessary.
+    ///
+    /// Returns self for method chaining.
     pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
         self.smartstate.set(smartstate);
         self

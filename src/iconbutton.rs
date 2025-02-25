@@ -1,3 +1,63 @@
+//! # IconButton Widget
+//!
+//! The [IconButton] widget combines an icon with button interaction capabilities.
+//! It provides a compact way to create clickable icons with optional subtitles,
+//! supporting all the interaction states of standard buttons.
+//!
+//! ## Core Features
+//!
+//! - Combines icon display with button interaction (click, hover, press states)
+//! - Optional subtitle/label text below the icon
+//! - Visual feedback via color changes for different interaction states
+//! - Integration with Kolibri's theming system
+//! - Support for the smartstate system for efficient redrawing
+//!
+//! ## Usage
+//!
+//! ```no_run
+//! # use embedded_graphics::pixelcolor::Rgb565;
+//! # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+//! # use kolibri_embedded_gui::style::medsize_rgb565_style;
+//! # use kolibri_embedded_gui::ui::Ui;
+//! # use embedded_graphics::prelude::*;
+//! # use embedded_graphics::primitives::Rectangle;
+//! # use embedded_iconoir::prelude::*;
+//! # use embedded_iconoir::size12px;
+//! # use kolibri_embedded_gui::ui::*;
+//! # use kolibri_embedded_gui::label::*;
+//! # use kolibri_embedded_gui::smartstate::*;
+//! # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+//! # let output_settings = OutputSettingsBuilder::new().build();
+//! # let mut window = Window::new("Kolibri Example", &output_settings);
+//! # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+//! # use kolibri_embedded_gui::iconbutton::IconButton;
+//! # use embedded_iconoir::size12px::actions::AddCircle;
+//! // Basic icon button
+//! ui.add(IconButton::new(size12px::actions::AddCircle));
+//!
+//! // Icon button with subtitle
+//! ui.add(IconButton::new(size12px::actions::AddCircle).label("Settings"));
+//!
+//! // Using with the type system instead of passing an icon instance
+//! ui.add(IconButton::<size12px::actions::AddCircle>::new_from_type());
+//!
+//! // Using smartstate for efficient redrawing
+//! let mut smartstateProvider = SmartstateProvider::<20>::new();
+//! ui.add(IconButton::new(size12px::actions::AddCircle).smartstate(smartstateProvider.nxt()));
+//!
+//! // Handling button clicks
+//! if ui.add(IconButton::new(size12px::actions::AddCircle)).clicked() {
+//!     // Handle the click action
+//! }
+//! ```
+//!
+//! ## Implementation Details
+//!
+//! The [IconButton] widget uses different visual styles based on interaction state:
+//! - Normal: Standard background and border colors
+//! - Hover: Highlighted background and border for visual feedback
+//! - Pressed/Active: Primary color background with highlighted border
+//!
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiResult, Interaction, Response, Ui, Widget};
 use core::cmp::max;
@@ -12,6 +72,11 @@ use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
 use embedded_graphics::text::{Alignment, Baseline, Text};
 use embedded_iconoir::prelude::{IconoirIcon, IconoirNewIcon};
 
+/// A button widget that displays an icon with optional text label.
+///
+/// [IconButton] combines the visual display of an icon with interactive button
+/// behavior. It changes appearance based on user interaction (normal, hover, pressed)
+/// and can optionally display a text label underneath the icon.
 pub struct IconButton<'a, ICON: IconoirIcon> {
     icon: PhantomData<ICON>,
     label: Option<&'a str>,
@@ -19,6 +84,36 @@ pub struct IconButton<'a, ICON: IconoirIcon> {
 }
 
 impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
+    /// Creates a new [IconButton] from an [IconoirIcon] instance.
+    ///
+    /// The icon color from the icon instance will be ignored, as the widget
+    /// will use the icon color from the current UI style.
+    ///
+    /// To see all icons you can use, look at [embedded_iconoir::size12px].
+    /// All other icon resolutions (from [embedded_iconoir::size12px] to [embedded_iconoir::size144px]) are available.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use embedded_iconoir::size12px;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # use kolibri_embedded_gui::smartstate::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # use kolibri_embedded_gui::iconbutton::IconButton;
+    /// use embedded_iconoir::size24px;
+    /// ui.add(IconButton::new(size24px::actions::AddCircle));
+    /// ```
     pub fn new(_icon: ICON) -> Self {
         Self {
             icon: PhantomData,
@@ -27,11 +122,64 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
         }
     }
 
+    /// Adds a text label/subtitle below the icon.
+    ///
+    /// The label text will be centered below the icon and sized according
+    /// to the current UI style font settings.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use embedded_iconoir::size12px;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # use kolibri_embedded_gui::smartstate::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # use kolibri_embedded_gui::iconbutton::IconButton;
+    /// use embedded_iconoir::size24px;
+    /// ui.add(IconButton::new(size24px::actions::AddCircle).label("Add"));
+    /// ```
     pub fn label(mut self, label: &'a str) -> Self {
         self.label = Some(label);
         self
     }
 
+    /// Creates a new [IconButton] using just the icon's type.
+    ///
+    /// This is a convenience method that allows creating an icon button without
+    /// instantiating the icon object first.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use embedded_iconoir::size12px;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # use kolibri_embedded_gui::smartstate::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # use kolibri_embedded_gui::iconbutton::IconButton;
+    /// use embedded_iconoir::size24px;
+    /// ui.add(IconButton::<size24px::actions::AddCircle>::new_from_type());
+    /// ```
     pub fn new_from_type() -> Self {
         Self {
             icon: PhantomData,
@@ -40,6 +188,35 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
         }
     }
 
+    /// Attaches a [Smartstate] to this widget for incremental redrawing.
+    ///
+    /// When a smartstate is attached, the widget will only redraw when its
+    /// state changes, improving performance for stationary UI elements.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # use embedded_graphics::prelude::*;
+    /// # use embedded_graphics::primitives::Rectangle;
+    /// # use embedded_iconoir::prelude::*;
+    /// # use embedded_iconoir::size12px;
+    /// # use kolibri_embedded_gui::ui::*;
+    /// # use kolibri_embedded_gui::label::*;
+    /// # use kolibri_embedded_gui::smartstate::*;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// # use kolibri_embedded_gui::iconbutton::IconButton;
+    /// let mut my_smartstate = Smartstate::empty();
+    /// ui.add(IconButton::new(size12px::actions::AddCircle).smartstate(&mut my_smartstate));
+    /// ```
+    ///
+    /// Returns `self` for method chaining.
     pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
         self.smartstate.set(smartstate);
         self
@@ -47,6 +224,16 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
 }
 
 impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
+    /// Draws the icon button within the UI.
+    ///
+    /// This method:
+    /// 1. Calculates the size based on icon and optional label
+    /// 2. Allocates space for the widget
+    /// 3. Positions the icon and optional label
+    /// 4. Detects interactions (hover, click, press)
+    /// 5. Manages visual appearance based on interaction state
+    /// 6. Updates the smartstate and draws when necessary
+    /// 7. Returns a response that includes click information
     fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
@@ -183,5 +370,16 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
         }
 
         Ok(Response::new(iresponse).set_clicked(click).set_down(down))
+    }
+}
+
+// Implement common traits for IconButton
+impl<ICON: IconoirIcon> core::fmt::Debug for IconButton<'_, ICON> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("IconButton")
+            .field("type", &core::any::type_name::<ICON>())
+            .field("label", &self.label)
+            .field("smartstate", &"<smartstate>")
+            .finish()
     }
 }

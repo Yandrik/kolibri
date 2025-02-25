@@ -1,3 +1,7 @@
+//! # Button Widget
+//!
+//! See [Button] for more info.
+
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiResult, Interaction, Response, Ui, Widget};
 use core::cmp::max;
@@ -10,12 +14,81 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
 use embedded_graphics::text::{Baseline, Text};
 
+/// # Button Widget
+///
+/// A clickable button widget that displays text and responds to user interaction.
+///
+/// Buttons are one of the most fundamental widgets in Kolibri. They provide a simple way to trigger
+/// actions in response to user input. Buttons can be created with just a text label and optionally
+/// support smartstate-based incremental redrawing for better performance.
+///
+/// # Features
+/// - Text label with customizable font and colors
+/// - Visual feedback for different interaction states (normal, hover, pressed)
+/// - Optional smartstate support for incremental redrawing
+/// - Automatic sizing based on text content and style settings
+///
+/// # Example
+/// ```no_run
+/// # use embedded_graphics::pixelcolor::Rgb565;
+/// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+/// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+/// # use kolibri_embedded_gui::ui::Ui;
+/// # use embedded_graphics::prelude::*;
+/// # use embedded_graphics::primitives::Rectangle;
+/// # use embedded_iconoir::prelude::*;
+/// # use embedded_iconoir::size12px;
+/// # use kolibri_embedded_gui::ui::*;
+/// # use kolibri_embedded_gui::label::*;
+/// # use kolibri_embedded_gui::smartstate::*;
+/// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+/// # let output_settings = OutputSettingsBuilder::new().build();
+/// # let mut window = Window::new("Kolibri Example", &output_settings);
+/// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+/// # use kolibri_embedded_gui::button::Button;
+///
+/// // Create a basic button
+/// if ui.add(Button::new("Click me!")).clicked() {
+///     // Handle click
+/// }
+///
+/// // Create a button with smartstate for incremental redrawing
+/// let mut smartstateProvider = SmartstateProvider::<20>::new();
+/// if ui.add(Button::new("Efficient!").smartstate(smartstateProvider.nxt())).clicked() {
+///     // Handle click with improved performance
+/// }
+///
+/// // Create a button in a horizontal layout
+/// if ui.add_horizontal(Button::new("-")).clicked() {
+///     // Handle click in horizontal layout
+/// }
+/// ```
+///
+/// # Visual States
+/// Buttons have three visual states that provide user feedback:
+/// 1. Normal - Default appearance with standard border and background
+/// 2. Hover - Enhanced appearance when mouse/pointer is over the button
+/// 3. Pressed - Highlighted appearance when clicked/pressed
+///
+/// # Styling
+/// Buttons follow the [UI]'s current style settings including:
+/// - Border colors and widths (normal and highlighted)
+/// - Background colors (normal, highlighted, and pressed)
+/// - Text color and font
+/// - Padding and spacing
 pub struct Button<'a> {
     label: &'a str,
     smartstate: Container<'a, Smartstate>,
 }
 
 impl<'a> Button<'a> {
+    /// Creates a new button with the given text label.
+    ///
+    /// # Arguments
+    /// * `label` - The text to display on the button
+    ///
+    /// # Returns
+    /// A new Button instance with the specified label and no smartstate
     pub fn new(label: &'a str) -> Button<'a> {
         Button {
             label,
@@ -23,6 +96,16 @@ impl<'a> Button<'a> {
         }
     }
 
+    /// Adds smartstate support to the button for incremental redrawing.
+    ///
+    /// When a smartstate is provided, the button will only redraw when its visual state changes,
+    /// significantly improving performance especially on slower displays.
+    ///
+    /// # Arguments
+    /// * `smartstate` - The smartstate to use for tracking the button's state
+    ///
+    /// # Returns
+    /// Self with smartstate configured
     pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
         self.smartstate.set(smartstate);
         self
@@ -35,7 +118,6 @@ impl Widget for Button<'_> {
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // get size
-
         let font = ui.style().default_font;
 
         let mut text = Text::new(

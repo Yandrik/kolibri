@@ -1,3 +1,67 @@
+//! # Slider Widget
+//!
+//! A widget for selecting numeric values within an inclusive range.
+//!
+//! # Core Features
+//!
+//! - Interactive value selection within inclusive ranges using fixed-point arithmetic
+//! - Step-based value adjustments for precise control
+//! - Optional text labels for clear identification
+//! - Customizable width to fit various layouts
+//! - Visual feedback for different interaction states (normal, hover, active)
+//!
+//! # Examples
+//!
+//! ```no_run
+//! # use embedded_graphics::pixelcolor::Rgb565;
+//! # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+//! # use kolibri_embedded_gui::style::medsize_rgb565_style;
+//! # use kolibri_embedded_gui::ui::Ui;
+//! # use embedded_graphics::prelude::*;
+//! # use embedded_graphics::primitives::Rectangle;
+//! # use embedded_iconoir::prelude::*;
+//! # use embedded_iconoir::size12px;
+//! # use kolibri_embedded_gui::ui::*;
+//! # use embedded_graphics::mono_font::ascii;
+//! # use kolibri_embedded_gui::label::*;
+//! # use kolibri_embedded_gui::smartstate::*;
+//! # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+//! # let output_settings = OutputSettingsBuilder::new().build();
+//! # let mut window = Window::new("Kolibri Example", &output_settings);
+//! # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+//! # let mut smartstateProvider = SmartstateProvider::<20>::new();
+//! # use kolibri_embedded_gui::slider::*;
+//! // Basic slider with range
+//! let mut value = 0i16;
+//! ui.add(Slider::new(&mut value, -100..=100));
+//!
+//! // Slider with label and custom width
+//! ui.add(Slider::new(&mut value, 0..=100)
+//!     .label("Volume")
+//!     .width(150));
+//!
+//! // Slider with step size and smartstate
+//! ui.add(Slider::new(&mut value, 0..=100)
+//!     .step_size(5)
+//!     .smartstate(smartstateProvider.nxt()));
+//! ```
+//!
+//! # Visual Components
+//!
+//! The slider consists of several visual elements:
+//! - A horizontal track line representing the full value range
+//! - A movable knob indicating the current value position
+//! - Optional label text displayed above the slider
+//! - Visual states (normal, hover, active) with appropriate color changes
+//!
+//! # Interaction Details
+//!
+//! - Click and drag functionality for intuitive value selection
+//! - Step-based value snapping for precise control
+//! - Range constraints to keep values within bounds
+//! - Visual feedback through dynamic styling
+//! - Efficient fixed-point arithmetic for smooth value interpolation
+//!
 use crate::smartstate::{Container, Smartstate};
 use crate::ui::{GuiResult, Interaction, Response, Ui, Widget};
 use core::cmp::max;
@@ -10,6 +74,13 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Circle, Line, PrimitiveStyleBuilder};
 use embedded_graphics::text::{Alignment, Baseline, Text};
 
+/// Performs linear interpolation using fixed-point arithmetic for embedded systems.
+///
+/// This function interpolates between `start` and `end` values based on a given position `t`
+/// within the range `[min_t, max_t]`. It uses only integer arithmetic to maintain performance
+/// and predictability on embedded systems.
+///
+/// Returns the interpolated value clamped within the valid range.
 fn lerp_fixed(start: i16, end: i16, t: i16, min_t: i16, max_t: i16) -> i16 {
     // Convert to i32 to prevent overflow during calculations
     let (start, end, t, min_t, max_t) = (
@@ -41,6 +112,14 @@ fn lerp_fixed(start: i16, end: i16, t: i16, min_t: i16, max_t: i16) -> i16 {
     interpolated as i16
 }
 
+/// An interactive slider widget for selecting numeric values.
+///
+/// The Slider widget provides a graphical way to select values within an inclusive range.
+/// It supports features like step-based value adjustments, optional labels, and visual
+/// feedback for user interactions.
+///
+/// The widget uses fixed-point arithmetic for smooth value interpolation while maintaining
+/// performance on embedded systems.
 pub struct Slider<'a> {
     value: &'a mut i16,
     range: RangeInclusive<i16>,
@@ -51,6 +130,15 @@ pub struct Slider<'a> {
 }
 
 impl<'a> Slider<'a> {
+    /// Creates a new slider with the given value and range.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - A mutable reference to the value to be controlled
+    /// * `range` - An inclusive range specifying the minimum and maximum allowed values
+    ///
+    /// By default, the slider uses a step size of 1, no label, and a width of 200 pixels.
+    /// These can be customized using the builder methods.
     pub fn new(value: &'a mut i16, range: RangeInclusive<i16>) -> Self {
         Self {
             value,
@@ -62,21 +150,41 @@ impl<'a> Slider<'a> {
         }
     }
 
+    /// Sets the label text for the slider.
+    ///
+    /// The label is displayed above the slider track and helps identify its purpose.
     pub fn label(mut self, label: &'a str) -> Self {
         self.label = Some(label);
         self
     }
 
+    /// Adds a smartstate to the slider for incremental redrawing.
+    ///
+    /// The smartstate tracks the slider's value and interaction state to minimize
+    /// unnecessary redraws.
     pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
         self.smartstate.set(smartstate);
         self
     }
 
+    /// Sets the width of the slider in pixels.
+    ///
+    /// This affects only the track and interaction area width. The total width
+    /// may be larger if the label text exceeds this value.
     pub fn width(mut self, width: u32) -> Self {
         self.width = width;
         self
     }
 
+    /// Sets the step size for value adjustments.
+    ///
+    /// The step size determines how the value snaps during interaction:
+    /// - Values will snap to the nearest multiple of the step size
+    /// - Must be at least 1 and at most the range span
+    ///
+    /// # Arguments
+    ///
+    /// * `step_size` - The size of each discrete step
     pub fn step_size(mut self, step_size: u16) -> Self {
         let range_span = (*self.range.end() - *self.range.start()).abs();
         self.step_size = step_size.clamp(1, range_span as u16);
@@ -264,7 +372,7 @@ impl Widget for Slider<'_> {
                 0
             }
         };
-        let state_val = (*self.value as u16) as u32 | (interact_val as u32) << 16;
+        let state_val = (*self.value as u16) as u32 | ((interact_val as u32) << 16);
 
         if !self.smartstate.eq_inner(&Smartstate::state(state_val)) {
             ui.start_drawing(&iresponse.area);

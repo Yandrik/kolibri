@@ -1,5 +1,5 @@
 use embedded_graphics::geometry::Size;
-use embedded_graphics::pixelcolor::{Rgb565};
+use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::prelude::Point;
 use embedded_graphics_simulator::sdl2::MouseButton;
 use embedded_graphics_simulator::{

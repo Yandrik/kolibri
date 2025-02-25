@@ -253,7 +253,7 @@ dependencies = [
 
 [[package]]
 name = "kolibri-embedded-gui"
-version = "0.0.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "ansi-parser",
  "az",
