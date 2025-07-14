@@ -111,7 +111,7 @@ impl<'a, Ico: IconoirIcon> IconWidget<'a, Ico> {
     }
 }
 
-impl<Ico: IconoirIcon> Widget for IconWidget<'_, Ico> {
+impl<COL: PixelColor, Ico: IconoirIcon> Widget<COL> for IconWidget<'_, Ico> {
     /// Draws the icon within the UI.
     ///
     /// This method:
@@ -120,7 +120,7 @@ impl<Ico: IconoirIcon> Widget for IconWidget<'_, Ico> {
     /// 3. Updates the smartstate
     /// 4. Draws the icon if necessary (when smartstate changes or is forced to redraw)
     /// 5. Centers the icon vertically within the allocated space
-    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
+    fn draw<DRAW: DrawTarget<Color = COL>>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {

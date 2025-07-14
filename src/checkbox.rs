@@ -124,8 +124,8 @@ impl Checkbox<'_> {
     }
 }
 
-impl Widget for Checkbox<'_> {
-    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
+impl<COL: PixelColor> Widget<COL> for Checkbox<'_> {
+    fn draw<DRAW: DrawTarget<Color = COL>>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {

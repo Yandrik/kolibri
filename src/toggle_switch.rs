@@ -155,8 +155,8 @@ impl<'a> ToggleSwitch<'a> {
     }
 }
 
-impl Widget for ToggleSwitch<'_> {
-    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
+impl<COL: PixelColor> Widget<COL> for ToggleSwitch<'_> {
+    fn draw<DRAW: DrawTarget<Color = COL>>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {

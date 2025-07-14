@@ -48,7 +48,7 @@ use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::mono_font::MonoFont;
 use embedded_graphics::mono_font::MonoTextStyle;
-use embedded_graphics::pixelcolor::PixelColor;
+use embedded_graphics::pixelcolor::{PixelColor, Rgb565};
 use embedded_graphics::prelude::*;
 use embedded_graphics::text::{Baseline, Text};
 use foldhash::fast::RandomState;
@@ -92,13 +92,14 @@ use foldhash::fast::RandomState;
 /// // Label with custom font and smartstate
 /// ui.add(Label::new("Custom font").with_font(ascii::FONT_10X20).smartstate(smartstateProvider.nxt()));
 /// ```
-pub struct Label<'a> {
+pub struct Label<'a, COL: PixelColor = Rgb565> {
     text: &'a str,
     font: Option<MonoFont<'a>>,
     smartstate: Container<'a, Smartstate>,
+    text_color: Option<COL>,
 }
 
-impl<'a> Label<'a> {
+impl<'a, COL: PixelColor> Label<'a, COL> {
     /// Creates a new label with the given text.
     ///
     /// # Examples
@@ -123,11 +124,12 @@ impl<'a> Label<'a> {
     /// # let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
     /// ui.add(Label::new("Hello World"));
     /// ```
-    pub fn new(text: &'a str) -> Label<'a> {
+    pub fn new(text: &'a str) -> Label<'a, COL> {
         Label {
             text,
             font: None,
             smartstate: Container::empty(),
+            text_color: None,
         }
     }
 
@@ -158,6 +160,11 @@ impl<'a> Label<'a> {
     /// ```
     pub fn with_font(mut self, font: MonoFont<'a>) -> Self {
         self.font = Some(font);
+        self
+    }
+
+    pub fn with_color(mut self, color: COL) -> Self {
+        self.text_color = Some(color);
         self
     }
 
@@ -197,8 +204,8 @@ impl<'a> Label<'a> {
     }
 }
 
-impl Widget for Label<'_> {
-    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
+impl<COL: PixelColor> Widget<COL> for Label<'_, COL> {
+    fn draw<DRAW: DrawTarget<Color = COL>>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
@@ -213,7 +220,10 @@ impl Widget for Label<'_> {
         let mut text = Text::new(
             self.text,
             Point::new(0, 0),
-            MonoTextStyle::new(&font, ui.style().text_color),
+            MonoTextStyle::new(
+                &font,
+                self.text_color.unwrap_or_else(|| ui.style().text_color),
+            ),
         );
 
         let size = text.bounding_box();
@@ -407,8 +417,8 @@ impl<'a> HashLabel<'a> {
     }
 }
 
-impl Widget for HashLabel<'_> {
-    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
+impl<COL: PixelColor> Widget<COL> for HashLabel<'_> {
+    fn draw<DRAW: DrawTarget<Color = COL>>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
