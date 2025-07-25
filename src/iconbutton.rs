@@ -68,7 +68,7 @@ use embedded_graphics::image::Image;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
+use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle, RoundedRectangle};
 use embedded_graphics::text::{Alignment, Baseline, Text};
 use embedded_iconoir::prelude::{IconoirIcon, IconoirNewIcon};
 
@@ -81,6 +81,7 @@ pub struct IconButton<'a, ICON: IconoirIcon> {
     icon: PhantomData<ICON>,
     label: Option<&'a str>,
     smartstate: Container<'a, Smartstate>,
+    corner_radius: Option<u32>,
 }
 
 impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
@@ -119,6 +120,7 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
             icon: PhantomData,
             smartstate: Container::empty(),
             label: None,
+            corner_radius: None,
         }
     }
 
@@ -185,6 +187,7 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
             icon: PhantomData,
             smartstate: Container::empty(),
             label: None,
+            corner_radius: None,
         }
     }
 
@@ -219,6 +222,20 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
     /// Returns `self` for method chaining.
     pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
         self.smartstate.set(smartstate);
+        self
+    }
+
+    /// Sets a custom corner radius for the icon button.
+    ///
+    /// If not specified, the button will use the corner radius from the UI style.
+    ///
+    /// # Arguments
+    /// * `radius` - The corner radius in pixels
+    ///
+    /// # Returns
+    /// Self with the specified corner radius
+    pub fn with_radius(mut self, radius: u32) -> Self {
+        self.corner_radius = Some(radius);
         self
     }
 }
@@ -356,11 +373,13 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
         if !self.smartstate.eq_option(&prevstate) {
             ui.start_drawing(&iresponse.area);
 
-            ui.draw(
-                &Rectangle::new(iresponse.area.top_left, iresponse.area.size)
-                    .into_styled(rect_style),
-            )
-            .ok();
+            let corner_radius = self.corner_radius.unwrap_or(ui.style().corner_radius);
+            let rounded_rect = RoundedRectangle::with_equal_corners(
+                Rectangle::new(iresponse.area.top_left, iresponse.area.size),
+                Size::new(corner_radius, corner_radius),
+            );
+
+            ui.draw(&rounded_rect.into_styled(rect_style)).ok();
             ui.draw(&icon_img).ok();
             if let Some(text) = text.as_mut() {
                 ui.draw(text).unwrap();
