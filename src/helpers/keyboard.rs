@@ -501,22 +501,22 @@ impl<'a> Layout<'a> {
 /// * `ui`: The `Ui` to draw to.
 /// * `layout`: The `Layout` to use for the keyboard.
 /// * `smartstates`: The `SmartstateProvider` to use for the keyboard.
-///    If `None`, no smartstates will be used.
+///   If `None`, no smartstates will be used.
 /// * `draw_num_row`: Whether the number row shall be drawn
 /// * `pad`: Whether to pad the rows so that they appear more centered (more like a "real" keyboard)
-///     padding generally looks better with lower `button_padding` and `spacing` than standard.
+///   padding generally looks better with lower `button_padding` and `spacing` than standard.
 /// * `shift`: The boolean to use for the shift state.
-///    If this changes, the returned `response.changed()` will be `true`.
+///   If this changes, the returned `response.changed()` will be `true`.
 /// * `open`: The boolean to use for the open state. If this is `false`, the keyboard will not be drawn.
-///    If this changes, the returned `response.changed()` will be `true`.
+///   If this changes, the returned `response.changed()` will be `true`.
 /// * `text`: The string to add / remove characters to / from.
-///    If this changes, the returned `response.changed()` will be `true`.
+///   If this changes, the returned `response.changed()` will be `true`.
 ///
 /// # Returns
 ///
 /// * A `Response` made from an `InternalResponse::empty()`.
-///     If a key was pressed, shift was clicked, or a key was erased, `response.changed()` will be `true`.
-///     If a key was pressed (irrelevant of changes), `response.clicked()` will be `true`.
+///   If a key was pressed, shift was clicked, or a key was erased, `response.changed()` will be `true`.
+///   If a key was pressed (irrelevant of changes), `response.clicked()` will be `true`.
 #[allow(clippy::too_many_arguments)]
 pub fn draw_keyboard<
     DRAW: DrawTarget<Color = COL>,
