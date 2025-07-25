@@ -48,7 +48,7 @@ use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::mono_font::MonoFont;
 use embedded_graphics::mono_font::MonoTextStyle;
-use embedded_graphics::pixelcolor::{PixelColor, Rgb565};
+use embedded_graphics::pixelcolor::{PixelColor};
 use embedded_graphics::prelude::*;
 use embedded_graphics::text::{Baseline, Text};
 use foldhash::fast::RandomState;
@@ -92,7 +92,7 @@ use foldhash::fast::RandomState;
 /// // Label with custom font and smartstate
 /// ui.add(Label::new("Custom font").with_font(ascii::FONT_10X20).smartstate(smartstateProvider.nxt()));
 /// ```
-pub struct Label<'a, COL: PixelColor = Rgb565> {
+pub struct Label<'a, COL: PixelColor> {
     text: &'a str,
     font: Option<MonoFont<'a>>,
     smartstate: Container<'a, Smartstate>,
@@ -333,14 +333,15 @@ impl Default for Hasher {
 ///     &hasher
 /// ));
 /// ```
-pub struct HashLabel<'a> {
+pub struct HashLabel<'a, COL: PixelColor> {
     text: &'a str,
     font: Option<MonoFont<'a>>,
     smartstate: Container<'a, Smartstate>,
     hasher: &'a Hasher,
+    text_color: Option<COL>,
 }
 
-impl<'a> HashLabel<'a> {
+impl<'a, COL: PixelColor> HashLabel<'a, COL> {
     /// Creates a new HashLabel with the given text, smartstate, and hasher.
     ///
     /// # Examples
@@ -380,6 +381,7 @@ impl<'a> HashLabel<'a> {
             font: None,
             smartstate: Container::new(smartstate),
             hasher,
+            text_color: None,
         }
     }
 
@@ -417,7 +419,7 @@ impl<'a> HashLabel<'a> {
     }
 }
 
-impl<COL: PixelColor> Widget<COL> for HashLabel<'_> {
+impl<COL: PixelColor> Widget<COL> for HashLabel<'_, COL> {
     fn draw<DRAW: DrawTarget<Color = COL>>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
@@ -433,7 +435,10 @@ impl<COL: PixelColor> Widget<COL> for HashLabel<'_> {
         let mut text = Text::new(
             self.text,
             Point::new(0, 0),
-            MonoTextStyle::new(&font, ui.style().text_color),
+            MonoTextStyle::new(
+                &font, 
+                self.text_color.unwrap_or_else(|| ui.style().text_color),
+            )
         );
 
         let size = text.bounding_box();
