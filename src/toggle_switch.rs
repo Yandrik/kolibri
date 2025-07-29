@@ -222,7 +222,7 @@ impl Widget for ToggleSwitch<'_> {
             let switch_rect = RoundedRectangle::new(
                 Rectangle::new(
                     iresponse.area.top_left
-                        + Point::new(padding.width as i32, padding.height as i32),
+                        + Point::new(padding.width as i32, 0i32),
                     Size::new(self.width, self.height),
                 ),
                 CornerRadii::new(Size::new(self.height / 2, self.height / 2)),
@@ -254,7 +254,7 @@ impl Widget for ToggleSwitch<'_> {
 
             let knob_center = Point::new(
                 knob_x,
-                iresponse.area.top_left.y + padding.height as i32 + (self.height / 2) as i32,
+                iresponse.area.top_left.y + (self.height / 2) as i32,
             );
 
             let knob = Circle::with_center(knob_center, knob_radius * 2 - 3);
