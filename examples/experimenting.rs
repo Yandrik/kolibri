@@ -88,12 +88,15 @@ fn main() -> Result<(), core::convert::Infallible> {
         ui.clear_row_to_end().unwrap();
         ui.new_row();
 
-        ui.expand_row_height(20);
-        ui.add_horizontal(Button::new("Another button!").smartstate(smartstates.nxt()));
+        ui.expand_row_height(50);
+        ui.add_horizontal(Button::new("Tall Wide button")
+            .smartstate(smartstates.nxt())
+            .with_min_width(250)
+        );
         ui.add(IconWidget::<size24px::layout::CornerBottomLeft>::new_from_type());
         // ui.add(IconButton::new(size24px::actions::AddCircle));
         ui.add_horizontal(IconButton::new(size24px::actions::AddCircle).label("Add 2"));
-        ui.add_horizontal(IconButton::new(size24px::actions::AddCircle).label("Add 2"));
+        ui.add_horizontal(IconButton::new(size24px::actions::AddCircle).label("Add 2").with_min_width(125));
         ui.add_horizontal(IconButton::new(size24px::actions::AddCircle).label("Add 2"));
         ui.new_row();
         if ui
@@ -108,7 +111,7 @@ fn main() -> Result<(), core::convert::Infallible> {
             println!("Slider value: {}", slider_val);
         }
 
-        ui.add(ToggleButton::new("Something", &mut state).smartstate(smartstates.nxt()));
+        ui.add_horizontal(ToggleButton::new("Something", &mut state).smartstate(smartstates.nxt()));
         ui.add(ToggleSwitch::new(&mut state).smartstate(smartstates.nxt()));
 
         /*

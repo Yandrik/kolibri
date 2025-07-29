@@ -18,7 +18,7 @@ use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
-use embedded_graphics::text::{Baseline, Text};
+use embedded_graphics::text::{Alignment, Baseline, Text};
 
 /// A button widget that can be toggled on and off.
 ///
@@ -55,6 +55,8 @@ pub struct ToggleButton<'a> {
     label: &'a str,
     active: &'a mut bool,
     smartstate: Container<'a, Smartstate>,
+    min_width: Option<u32>,
+    is_modified: bool,
 }
 
 impl<'a> ToggleButton<'a> {
@@ -101,6 +103,8 @@ impl<'a> ToggleButton<'a> {
             label,
             active,
             smartstate: Container::empty(),
+            min_width: None,
+            is_modified: false,
         }
     }
 
@@ -114,6 +118,16 @@ impl<'a> ToggleButton<'a> {
         self.smartstate.set(smartstate);
         self
     }
+
+    /// provides a minimum width for the widget
+    /// 
+    /// if the width calculated from the contents plus padding plus border are 
+    /// less than the provided minimum width the width of the widget will be increased
+    pub fn with_min_width(mut self, width: u32) -> Self{
+        self.min_width = Some(width);
+        self.is_modified = true;
+        self
+    }    
 }
 
 impl Widget for ToggleButton<'_> {
@@ -136,7 +150,10 @@ impl Widget for ToggleButton<'_> {
         let height = ui.style().default_widget_height;
 
         let size = Size::new(
-            text_bounds.size.width + 2 * padding.width + 2 * border,
+            max (
+                text_bounds.size.width + 2 * padding.width + 2 * border,
+                self.min_width.unwrap_or_else(||0),
+            ),
             max(
                 text_bounds.size.height + 2 * padding.height + 2 * border,
                 height,
@@ -146,15 +163,16 @@ impl Widget for ToggleButton<'_> {
         // Allocate space
         let iresponse = ui.allocate_space(size)?;
 
-        // Position text
+        // Position text in centre
         text.translate_mut(
             iresponse.area.top_left
                 + Point::new(
-                    (padding.width + border) as i32,
-                    (padding.height + border) as i32,
+            (iresponse.area.size.width /2) as i32,
+            (iresponse.area.size.height /2) as i32,
                 ),
         );
-        text.text_style.baseline = Baseline::Top;
+        text.text_style.baseline = Baseline::Middle;   
+        text.text_style.alignment = Alignment::Center; 
 
         // Handle interaction
         let mut changed = false;
@@ -169,7 +187,11 @@ impl Widget for ToggleButton<'_> {
         // Determine widget style
         let style = match (*self.active, iresponse.interaction) {
             (true, Interaction::Click(_) | Interaction::Drag(_) | Interaction::Release(_)) => {
-                self.smartstate.modify(|st| *st = Smartstate::state(1));
+                if self.is_modified {
+                    self.smartstate.modify(|st| *st = Smartstate::state(1));
+                } else {
+                    self.smartstate.modify(|st| *st = Smartstate::state(2));
+                }
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
@@ -177,7 +199,11 @@ impl Widget for ToggleButton<'_> {
                     .build()
             }
             (true, Interaction::Hover(_)) => {
-                self.smartstate.modify(|st| *st = Smartstate::state(2));
+                if self.is_modified {
+                    self.smartstate.modify(|st| *st = Smartstate::state(3));
+                } else {
+                    self.smartstate.modify(|st| *st = Smartstate::state(4));
+                }
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
@@ -185,7 +211,11 @@ impl Widget for ToggleButton<'_> {
                     .build()
             }
             (true, _) => {
-                self.smartstate.modify(|st| *st = Smartstate::state(3));
+                if self.is_modified {
+                    self.smartstate.modify(|st| *st = Smartstate::state(5));
+                } else {
+                    self.smartstate.modify(|st| *st = Smartstate::state(6));
+                }
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().border_color)
                     .stroke_width(ui.style().border_width)
@@ -193,7 +223,11 @@ impl Widget for ToggleButton<'_> {
                     .build()
             }
             (false, Interaction::Click(_) | Interaction::Drag(_) | Interaction::Release(_)) => {
-                self.smartstate.modify(|st| *st = Smartstate::state(4));
+                if self.is_modified {
+                    self.smartstate.modify(|st| *st = Smartstate::state(7));
+                } else {
+                    self.smartstate.modify(|st| *st = Smartstate::state(8));
+                }
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
@@ -201,7 +235,11 @@ impl Widget for ToggleButton<'_> {
                     .build()
             }
             (false, Interaction::Hover(_)) => {
-                self.smartstate.modify(|st| *st = Smartstate::state(5));
+                if self.is_modified {
+                    self.smartstate.modify(|st| *st = Smartstate::state(9));
+                } else {
+                    self.smartstate.modify(|st| *st = Smartstate::state(10));
+                }
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
@@ -209,7 +247,11 @@ impl Widget for ToggleButton<'_> {
                     .build()
             }
             (false, _) => {
-                self.smartstate.modify(|st| *st = Smartstate::state(6));
+                if self.is_modified {
+                    self.smartstate.modify(|st| *st = Smartstate::state(11));
+                } else {
+                    self.smartstate.modify(|st| *st = Smartstate::state(12));
+                }
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().border_color)
                     .stroke_width(ui.style().border_width)

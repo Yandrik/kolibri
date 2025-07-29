@@ -12,7 +12,7 @@ use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
-use embedded_graphics::text::{Baseline, Text};
+use embedded_graphics::text::{Alignment, Baseline, Text};
 
 /// # Button Widget
 ///
@@ -79,6 +79,8 @@ use embedded_graphics::text::{Baseline, Text};
 pub struct Button<'a> {
     label: &'a str,
     smartstate: Container<'a, Smartstate>,
+    min_width: Option<u32>,
+    is_modified: bool,
 }
 
 impl<'a> Button<'a> {
@@ -93,6 +95,8 @@ impl<'a> Button<'a> {
         Button {
             label,
             smartstate: Container::empty(),
+            min_width: None,
+            is_modified: false,
         }
     }
 
@@ -108,6 +112,16 @@ impl<'a> Button<'a> {
     /// Self with smartstate configured
     pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
         self.smartstate.set(smartstate);
+        self
+    }
+
+    /// provides a minimum width for the widget
+    /// 
+    /// if the width calculated from the contents plus padding plus border are 
+    /// less than the provided minimum width the width of the widget will be increased
+    pub fn with_min_width(mut self, width: u32) -> Self{
+        self.min_width = Some(width);
+        self.is_modified = true;
         self
     }
 }
@@ -131,19 +145,21 @@ impl Widget for Button<'_> {
         let padding = ui.style().spacing.button_padding;
         let border = ui.style().border_width;
 
-        // allocate space
+        // allocate space, checking for minimum width
         let iresponse = ui.allocate_space(Size::new(
-            size.size.width + 2 * padding.width + 2 * border,
+            max(size.size.width + 2 * padding.width + 2 * border, self.min_width.unwrap_or_else(|| 0)),
             max(size.size.height + 2 * padding.height + 2 * border, height),
         ))?;
 
-        // move text
+
+        // move text to centre
         text.translate_mut(iresponse.area.top_left.add(Point::new(
-            (padding.width + border) as i32,
-            (padding.height + border) as i32,
+            (iresponse.area.size.width /2) as i32,
+            (iresponse.area.size.height /2) as i32,
         )));
 
-        text.text_style.baseline = Baseline::Top;
+        text.text_style.baseline = Baseline::Middle;    // ensure text is centred vertically when widget height is greater than text height
+        text.text_style.alignment = Alignment::Center;  // ensure text is centered when widget width is greater than text width
 
         // check for click
         let click = matches!(iresponse.interaction, Interaction::Release(_));
@@ -157,7 +173,11 @@ impl Widget for Button<'_> {
 
         let rect_style = match iresponse.interaction {
             Interaction::None => {
-                self.smartstate.modify(|st| *st = Smartstate::state(1));
+                if self.is_modified {
+                    self.smartstate.modify(|st| *st = Smartstate::state(1));
+                } else {
+                    self.smartstate.modify(|st| *st = Smartstate::state(2));
+                }
 
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().border_color)
@@ -166,7 +186,11 @@ impl Widget for Button<'_> {
                     .build()
             }
             Interaction::Hover(_) => {
-                self.smartstate.modify(|st| *st = Smartstate::state(2));
+                if self.is_modified {
+                    self.smartstate.modify(|st| *st = Smartstate::state(3));
+                } else {
+                    self.smartstate.modify(|st| *st = Smartstate::state(4));
+                }
 
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
@@ -176,7 +200,11 @@ impl Widget for Button<'_> {
             }
 
             _ => {
-                self.smartstate.modify(|st| *st = Smartstate::state(3));
+                if self.is_modified {
+                    self.smartstate.modify(|st| *st = Smartstate::state(5));
+                } else {
+                    self.smartstate.modify(|st| *st = Smartstate::state(6));
+                }
 
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
