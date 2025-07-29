@@ -84,7 +84,7 @@ pub struct IconButton<'a, ICON: IconoirIcon> {
     min_width: Option<u32>,
     is_modified: bool,
 }
-   
+
 impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
     /// Creates a new [IconButton] from an [IconoirIcon] instance.
     ///
@@ -228,10 +228,10 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
         self
     }
     /// provides a minimum width for the widget
-    /// 
-    /// if the width calculated from the contents plus padding plus border are 
+    ///
+    /// if the width calculated from the contents plus padding plus border are
     /// less than the provided minimum width the width of the widget will be increased
-    pub fn with_min_width(mut self, width: u32) -> Self{
+    pub fn with_min_width(mut self, width: u32) -> Self {
         self.min_width = Some(width);
         self.is_modified = true;
         self
@@ -284,10 +284,7 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
             min_height,
         );
 
-        let width = max(
-            width,
-            self.min_width.unwrap_or_else(|| 0),
-        );
+        let width = max(width, self.min_width.unwrap_or_else(|| 0));
 
         let size = Size::new(width, height);
 
@@ -350,7 +347,6 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
                 } else {
                     self.smartstate.modify(|st| *st = Smartstate::state(2));
                 }
-
 
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().border_color)

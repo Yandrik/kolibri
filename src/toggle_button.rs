@@ -120,14 +120,14 @@ impl<'a> ToggleButton<'a> {
     }
 
     /// provides a minimum width for the widget
-    /// 
-    /// if the width calculated from the contents plus padding plus border are 
+    ///
+    /// if the width calculated from the contents plus padding plus border are
     /// less than the provided minimum width the width of the widget will be increased
-    pub fn with_min_width(mut self, width: u32) -> Self{
+    pub fn with_min_width(mut self, width: u32) -> Self {
         self.min_width = Some(width);
         self.is_modified = true;
         self
-    }    
+    }
 }
 
 impl Widget for ToggleButton<'_> {
@@ -150,9 +150,9 @@ impl Widget for ToggleButton<'_> {
         let height = ui.style().default_widget_height;
 
         let size = Size::new(
-            max (
+            max(
                 text_bounds.size.width + 2 * padding.width + 2 * border,
-                self.min_width.unwrap_or_else(||0),
+                self.min_width.unwrap_or_else(|| 0),
             ),
             max(
                 text_bounds.size.height + 2 * padding.height + 2 * border,
@@ -167,12 +167,12 @@ impl Widget for ToggleButton<'_> {
         text.translate_mut(
             iresponse.area.top_left
                 + Point::new(
-            (iresponse.area.size.width /2) as i32,
-            (iresponse.area.size.height /2) as i32,
+                    (iresponse.area.size.width / 2) as i32,
+                    (iresponse.area.size.height / 2) as i32,
                 ),
         );
-        text.text_style.baseline = Baseline::Middle;   
-        text.text_style.alignment = Alignment::Center; 
+        text.text_style.baseline = Baseline::Middle;
+        text.text_style.alignment = Alignment::Center;
 
         // Handle interaction
         let mut changed = false;

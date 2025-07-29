@@ -116,10 +116,10 @@ impl<'a> Button<'a> {
     }
 
     /// provides a minimum width for the widget
-    /// 
-    /// if the width calculated from the contents plus padding plus border are 
+    ///
+    /// if the width calculated from the contents plus padding plus border are
     /// less than the provided minimum width the width of the widget will be increased
-    pub fn with_min_width(mut self, width: u32) -> Self{
+    pub fn with_min_width(mut self, width: u32) -> Self {
         self.min_width = Some(width);
         self.is_modified = true;
         self
@@ -147,19 +147,21 @@ impl Widget for Button<'_> {
 
         // allocate space, checking for minimum width
         let iresponse = ui.allocate_space(Size::new(
-            max(size.size.width + 2 * padding.width + 2 * border, self.min_width.unwrap_or_else(|| 0)),
+            max(
+                size.size.width + 2 * padding.width + 2 * border,
+                self.min_width.unwrap_or_else(|| 0),
+            ),
             max(size.size.height + 2 * padding.height + 2 * border, height),
         ))?;
 
-
         // move text to centre
         text.translate_mut(iresponse.area.top_left.add(Point::new(
-            (iresponse.area.size.width /2) as i32,
-            (iresponse.area.size.height /2) as i32,
+            (iresponse.area.size.width / 2) as i32,
+            (iresponse.area.size.height / 2) as i32,
         )));
 
-        text.text_style.baseline = Baseline::Middle;    // ensure text is centred vertically when widget height is greater than text height
-        text.text_style.alignment = Alignment::Center;  // ensure text is centered when widget width is greater than text width
+        text.text_style.baseline = Baseline::Middle; // ensure text is centred vertically when widget height is greater than text height
+        text.text_style.alignment = Alignment::Center; // ensure text is centered when widget width is greater than text width
 
         // check for click
         let click = matches!(iresponse.interaction, Interaction::Release(_));
