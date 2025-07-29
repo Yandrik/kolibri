@@ -223,7 +223,7 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
     }
 }
 
-impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
+impl<ICON: IconoirIcon, COL: PixelColor> Widget<COL> for IconButton<'_, ICON> {
     /// Draws the icon button within the UI.
     ///
     /// This method:
@@ -234,7 +234,7 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
     /// 5. Manages visual appearance based on interaction state
     /// 6. Updates the smartstate and draws when necessary
     /// 7. Returns a response that includes click information
-    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
+    fn draw<DRAW: DrawTarget<Color = COL>>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {

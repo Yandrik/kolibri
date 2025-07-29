@@ -81,7 +81,7 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         // add button first to center icon vertically
         ui.add_horizontal(IconButton::new(size24px::navigation::ArrowUpCircle));
-        ui.add(IconWidget::<size24px::actions::RefreshDouble>::new_from_type());
+        ui.add(IconWidget::<size24px::actions::RefreshDouble, Rgb565>::new_from_type());
 
         // one row offset
         ui.new_row();
