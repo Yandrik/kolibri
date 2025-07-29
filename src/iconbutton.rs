@@ -81,6 +81,8 @@ pub struct IconButton<'a, ICON: IconoirIcon> {
     icon: PhantomData<ICON>,
     label: Option<&'a str>,
     smartstate: Container<'a, Smartstate>,
+    min_width: Option<u32>,
+    is_modified: bool,
 }
 
 impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
@@ -119,6 +121,8 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
             icon: PhantomData,
             smartstate: Container::empty(),
             label: None,
+            min_width: None,
+            is_modified: false,
         }
     }
 
@@ -185,6 +189,8 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
             icon: PhantomData,
             smartstate: Container::empty(),
             label: None,
+            min_width: None,
+            is_modified: false,
         }
     }
 
@@ -219,6 +225,15 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
     /// Returns `self` for method chaining.
     pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
         self.smartstate.set(smartstate);
+        self
+    }
+    /// provides a minimum width for the widget
+    ///
+    /// if the width calculated from the contents plus padding plus border are
+    /// less than the provided minimum width the width of the widget will be increased
+    pub fn with_min_width(mut self, width: u32) -> Self {
+        self.min_width = Some(width);
+        self.is_modified = true;
         self
     }
 }
@@ -268,6 +283,8 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
             max(ui.style().default_widget_height, ui.get_row_height()),
             min_height,
         );
+
+        let width = max(width, self.min_width.unwrap_or(0));
 
         let size = Size::new(width, height);
 
@@ -325,7 +342,11 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
 
         let rect_style = match iresponse.interaction {
             Interaction::None => {
-                self.smartstate.modify(|st| *st = Smartstate::state(1));
+                if self.is_modified {
+                    self.smartstate.modify(|st| *st = Smartstate::state(1));
+                } else {
+                    self.smartstate.modify(|st| *st = Smartstate::state(2));
+                }
 
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().border_color)
@@ -334,7 +355,11 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
                     .build()
             }
             Interaction::Hover(_) => {
-                self.smartstate.modify(|st| *st = Smartstate::state(2));
+                if self.is_modified {
+                    self.smartstate.modify(|st| *st = Smartstate::state(3));
+                } else {
+                    self.smartstate.modify(|st| *st = Smartstate::state(4));
+                }
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
@@ -343,7 +368,11 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
             }
 
             _ => {
-                self.smartstate.modify(|st| *st = Smartstate::state(3));
+                if self.is_modified {
+                    self.smartstate.modify(|st| *st = Smartstate::state(5));
+                } else {
+                    self.smartstate.modify(|st| *st = Smartstate::state(6));
+                }
 
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
