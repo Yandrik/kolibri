@@ -284,7 +284,7 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
             min_height,
         );
 
-        let width = max(width, self.min_width.unwrap_or_else(|| 0));
+        let width = max(width, self.min_width.unwrap_or(0));
 
         let size = Size::new(width, height);
 

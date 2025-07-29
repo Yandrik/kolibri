@@ -152,7 +152,7 @@ impl Widget for ToggleButton<'_> {
         let size = Size::new(
             max(
                 text_bounds.size.width + 2 * padding.width + 2 * border,
-                self.min_width.unwrap_or_else(|| 0),
+                self.min_width.unwrap_or(0),
             ),
             max(
                 text_bounds.size.height + 2 * padding.height + 2 * border,

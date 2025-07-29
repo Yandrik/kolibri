@@ -149,7 +149,7 @@ impl Widget for Button<'_> {
         let iresponse = ui.allocate_space(Size::new(
             max(
                 size.size.width + 2 * padding.width + 2 * border,
-                self.min_width.unwrap_or_else(|| 0),
+                self.min_width.unwrap_or(0),
             ),
             max(size.size.height + 2 * padding.height + 2 * border, height),
         ))?;
