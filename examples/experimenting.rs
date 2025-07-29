@@ -1,6 +1,7 @@
 use embedded_graphics::geometry::Size;
 use embedded_graphics::pixelcolor::Rgb565;
-use embedded_graphics::prelude::Point;
+use embedded_graphics::prelude::{Point, WebColors};
+use embedded_graphics::text::DecorationColor;
 use embedded_graphics_simulator::sdl2::MouseButton;
 use embedded_graphics_simulator::{
     OutputSettingsBuilder, SimulatorDisplay, SimulatorEvent, Window,
@@ -9,7 +10,7 @@ use kolibri_embedded_gui::button::Button;
 use kolibri_embedded_gui::icon::IconWidget;
 use kolibri_embedded_gui::iconbutton::IconButton;
 use kolibri_embedded_gui::icons::size24px;
-use kolibri_embedded_gui::label::{HashLabel, Hasher};
+use kolibri_embedded_gui::label::{HashLabel, Hasher, Label};
 use kolibri_embedded_gui::slider::Slider;
 use kolibri_embedded_gui::smartstate::SmartstateProvider;
 use kolibri_embedded_gui::style::*;
@@ -90,7 +91,11 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         ui.expand_row_height(20);
         ui.add_horizontal(Button::new("Another button!").smartstate(smartstates.nxt()));
-        ui.add(IconWidget::<size24px::layout::CornerBottomLeft>::new_from_type());
+        ui.add_horizontal(IconWidget::<size24px::layout::CornerBottomLeft, Rgb565>::new_from_type());
+        ui.add(IconWidget::<size24px::layout::CornerBottomLeft, Rgb565>::new_from_type()
+            .with_color(Rgb565::CSS_RED)
+            .with_background_color(Rgb565::CSS_DARK_GREEN)
+        );
         // ui.add(IconButton::new(size24px::actions::AddCircle));
         ui.add_horizontal(IconButton::new(size24px::actions::AddCircle).label("Add 2"));
         ui.add_horizontal(IconButton::new(size24px::actions::AddCircle).label("Add 2"));
@@ -108,9 +113,18 @@ fn main() -> Result<(), core::convert::Infallible> {
             println!("Slider value: {}", slider_val);
         }
 
-        ui.add(ToggleButton::new("Something", &mut state).smartstate(smartstates.nxt()));
+        ui.add_horizontal(ToggleButton::new("Something", &mut state).smartstate(smartstates.nxt()));
         ui.add(ToggleSwitch::new(&mut state).smartstate(smartstates.nxt()));
 
+        ui.add_horizontal(Label::new("Decorated")
+            .with_color(Rgb565::CSS_BLUE)
+            .with_underline(DecorationColor::Custom(Rgb565::CSS_RED))
+        );
+        ui.add(Label::new("Label")
+            .with_color(Rgb565::CSS_BLACK)
+            .with_strikethrough(DecorationColor::TextColor)
+            .with_background_color(Rgb565::CSS_YELLOW)
+        );
         /*
         ui.right_panel_ui(200, true, |ui| {
             ui.add(Label::new("Right panel").smartstate(smartstates.next()));
