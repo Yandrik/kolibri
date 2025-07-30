@@ -63,6 +63,8 @@ use foldhash::fast::RandomState;
 /// - Basic text display with customizable fonts
 /// - Smartstate integration for incremental redrawing
 /// - Automatic vertical centering in allocated space
+/// - optional custom colors to override default style
+/// - ability to have underline or strikethrough decoration, optionally in a custom color
 ///
 /// # Examples
 ///
@@ -264,7 +266,7 @@ impl<'a, COL: PixelColor> Label<'a, COL> {
         self
     }
 
-    /// Sets underline for the label using DecorationColor
+    /// Sets underline for the label using embedded_graphics DecorationColor
     /// DecorationColor::None - no underline drawn
     /// DecorationColor::TextColor - underline drawn in same color as text label
     /// DecorationColor::Custom(COL:PixelColor) - underline drawin in given color
@@ -297,7 +299,7 @@ impl<'a, COL: PixelColor> Label<'a, COL> {
         self
     }
 
-    /// Sets strikethrough for the label using DecorationColor
+    /// Sets strikethrough for the label using embedded_graphics DecorationColor
     /// DecorationColor::None - no strikethrough drawn
     /// DecorationColor::TextColor - strikethrough drawn in same color as text label
     /// DecorationColor::Custom(COL:PixelColor) - strikethrough drawin in given color
@@ -347,7 +349,7 @@ impl<COL: PixelColor> Widget<COL> for Label<'_, COL> {
         let mut char_style = MonoTextStyle::new(
             &font,
             self.foreground_color
-                .unwrap_or_else(|| ui.style().text_color),
+                .unwrap_or_else(|| ui.style().widget.normal.foreground_color),
         );
         char_style.underline_color = self.underline;
         char_style.strikethrough_color = self.strikethrough;
@@ -698,7 +700,7 @@ impl<COL: PixelColor> Widget<COL> for HashLabel<'_, COL> {
         let mut char_style = MonoTextStyle::new(
             &font,
             self.foreground_color
-                .unwrap_or_else(|| ui.style().text_color),
+                .unwrap_or_else(|| ui.style().widget.normal.foreground_color),
         );
         char_style.underline_color = self.underline;
         char_style.strikethrough_color = self.strikethrough;

@@ -10,6 +10,7 @@
 //! with the framework's [Smartstate] system for efficient rendering.
 //!
 use crate::smartstate::{Container, Smartstate};
+use crate::style::WidgetStyle;
 use crate::ui::{GuiError, GuiResult, Interaction, Response, Ui, Widget};
 use core::cmp::max;
 use embedded_graphics::draw_target::DrawTarget;
@@ -51,13 +52,16 @@ use embedded_graphics::text::{Baseline, Text};
 ///     ui.add(ToggleButton::new("Toggle Me", &mut state));
 /// }
 /// ```
-pub struct ToggleButton<'a> {
+pub struct ToggleButton<'a, COL: PixelColor> {
     label: &'a str,
     active: &'a mut bool,
     smartstate: Container<'a, Smartstate>,
+    is_enabled: bool,
+    is_modified: bool,
+    custom_style: Option<WidgetStyle<COL>>,
 }
 
-impl<'a> ToggleButton<'a> {
+impl<'a, COL: PixelColor> ToggleButton<'a, COL> {
     /// Creates a new [ToggleButton] with the given label and active state.
     ///
     /// The `label` parameter is the text to display on the button, and the `active`
@@ -96,11 +100,14 @@ impl<'a> ToggleButton<'a> {
     ///    }
     ///
     /// }
-    pub fn new(label: &'a str, active: &'a mut bool) -> ToggleButton<'a> {
+    pub fn new(label: &'a str, active: &'a mut bool) -> ToggleButton<'a, COL> {
         ToggleButton {
             label,
             active,
             smartstate: Container::empty(),
+            is_enabled: true,
+            is_modified: false,
+            custom_style: None,
         }
     }
 
@@ -114,25 +121,53 @@ impl<'a> ToggleButton<'a> {
         self.smartstate.set(smartstate);
         self
     }
+
+    /// Enables or disables the widget - will not respond to interaction
+    ///
+    /// # Arguments
+    /// * `enabled` - if the widget should be enabled (true) or disabled(false)
+    ///
+    /// # Returns
+    /// Self with is_enabled set
+    pub fn enable(mut self, enabled: &bool) -> Self {
+        self.is_modified = true;
+        self.is_enabled = *enabled;
+        self
+    }
+
+    /// Specifies the context for the widget to determine how it is styled
+    ///
+    /// # Arguments
+    /// * `context` - Context::Normal, Context::Primary, Context::Secondary
+    ///
+    /// # Returns
+    /// Self with context set
+    pub fn with_widget_style(mut self, style: WidgetStyle<COL>) -> Self {
+        self.is_modified = true;
+        self.custom_style = Some(style);
+        self
+    }
 }
 
-impl<COL: PixelColor> Widget<COL> for ToggleButton<'_> {
+impl<COL: PixelColor> Widget<COL> for ToggleButton<'_, COL> {
     fn draw<DRAW: DrawTarget<Color = COL>>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // Prepare text
         let font = ui.style().default_font;
+        let widget_style = self.custom_style.unwrap_or_else(|| ui.style().widget);
+
         let mut text = Text::new(
             self.label,
             Point::zero(),
-            MonoTextStyle::new(&font, ui.style().text_color),
+            MonoTextStyle::new(&font, widget_style.normal.foreground_color),
         );
 
         // Determine size
         let text_bounds = text.bounding_box();
         let padding = ui.style().spacing.button_padding;
-        let border = ui.style().border_width;
+        let border = widget_style.normal.border_width;
         let height = ui.style().default_widget_height;
 
         let size = Size::new(
@@ -166,59 +201,73 @@ impl<COL: PixelColor> Widget<COL> for ToggleButton<'_> {
         // Determine styles based on state and interaction
         let prevstate = self.smartstate.clone_inner();
 
+        // Determine text color
+        text.character_style.text_color = match (*self.active, iresponse.interaction) {
+            (true, Interaction::Click(_) | Interaction::Drag(_) | Interaction::Release(_)) => {
+                Some(widget_style.active.foreground_color)
+            }
+            (true, Interaction::Hover(_)) => Some(widget_style.hover.foreground_color),
+            (true, _) => Some(widget_style.active.foreground_color),
+            (false, Interaction::Click(_) | Interaction::Drag(_) | Interaction::Release(_)) => {
+                Some(widget_style.hover.foreground_color)
+            }
+            (false, Interaction::Hover(_)) => Some(widget_style.hover.foreground_color),
+            (false, _) => Some(widget_style.normal.foreground_color),
+        };
+
         // Determine widget style
         let style = match (*self.active, iresponse.interaction) {
             (true, Interaction::Click(_) | Interaction::Drag(_) | Interaction::Release(_)) => {
                 self.smartstate.modify(|st| *st = Smartstate::state(1));
                 PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().highlight_border_color)
-                    .stroke_width(ui.style().highlight_border_width)
-                    .fill_color(ui.style().primary_color)
+                    .stroke_color(widget_style.active.border_color)
+                    .stroke_width(widget_style.active.border_width)
+                    .fill_color(widget_style.active.background_color)
                     .build()
             }
             (true, Interaction::Hover(_)) => {
                 self.smartstate.modify(|st| *st = Smartstate::state(2));
                 PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().highlight_border_color)
-                    .stroke_width(ui.style().highlight_border_width)
-                    .fill_color(ui.style().primary_color)
+                    .stroke_color(widget_style.hover.border_color)
+                    .stroke_width(widget_style.hover.border_width)
+                    .fill_color(widget_style.hover.background_color)
                     .build()
             }
             (true, _) => {
                 self.smartstate.modify(|st| *st = Smartstate::state(3));
                 PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().border_color)
-                    .stroke_width(ui.style().border_width)
-                    .fill_color(ui.style().primary_color)
+                    .stroke_color(widget_style.active.border_color)
+                    .stroke_width(widget_style.active.border_width)
+                    .fill_color(widget_style.active.background_color)
                     .build()
             }
             (false, Interaction::Click(_) | Interaction::Drag(_) | Interaction::Release(_)) => {
                 self.smartstate.modify(|st| *st = Smartstate::state(4));
                 PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().highlight_border_color)
-                    .stroke_width(ui.style().highlight_border_width)
-                    .fill_color(ui.style().primary_color)
+                    .stroke_color(widget_style.hover.border_color)
+                    .stroke_width(widget_style.hover.border_width)
+                    .fill_color(widget_style.hover.background_color)
                     .build()
             }
             (false, Interaction::Hover(_)) => {
                 self.smartstate.modify(|st| *st = Smartstate::state(5));
                 PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().highlight_border_color)
-                    .stroke_width(ui.style().highlight_border_width)
-                    .fill_color(ui.style().highlight_item_background_color)
+                    .stroke_color(widget_style.hover.border_color)
+                    .stroke_width(widget_style.hover.border_width)
+                    .fill_color(widget_style.hover.background_color)
                     .build()
             }
             (false, _) => {
                 self.smartstate.modify(|st| *st = Smartstate::state(6));
                 PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().border_color)
-                    .stroke_width(ui.style().border_width)
-                    .fill_color(ui.style().item_background_color)
+                    .stroke_color(widget_style.normal.border_color)
+                    .stroke_width(widget_style.normal.border_width)
+                    .fill_color(widget_style.normal.background_color)
                     .build()
             }
         };
 
-        let redraw = !self.smartstate.eq_option(&prevstate) || changed;
+        let redraw = !self.smartstate.eq_option(&prevstate) || changed || self.is_modified;
 
         if redraw {
             ui.start_drawing(&iresponse.area);
@@ -231,16 +280,24 @@ impl<COL: PixelColor> Widget<COL> for ToggleButton<'_> {
 
             ui.finalize()?;
         }
+        self.is_modified = false;
 
-        let click = matches!(iresponse.interaction, Interaction::Release(_));
-        let down = matches!(
-            iresponse.interaction,
-            Interaction::Click(_) | Interaction::Drag(_)
-        );
+        if self.is_enabled {
+            let click = matches!(iresponse.interaction, Interaction::Release(_));
+            let down = matches!(
+                iresponse.interaction,
+                Interaction::Click(_) | Interaction::Drag(_)
+            );
 
-        Ok(Response::new(iresponse)
-            .set_clicked(click)
-            .set_down(down)
-            .set_changed(changed))
+            Ok(Response::new(iresponse)
+                .set_clicked(click)
+                .set_down(down)
+                .set_changed(changed))
+        } else {
+            Ok(Response::new(iresponse)
+                .set_clicked(false)
+                .set_down(false)
+                .set_changed(false))
+        }
     }
 }

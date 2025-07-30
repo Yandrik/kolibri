@@ -116,7 +116,7 @@ impl<'a, Ico: IconoirIcon, COL: PixelColor> IconWidget<'a, Ico, COL> {
         self.smartstate.set(smartstate);
         self
     }
-    
+
     /// Specifies a custom icon color
     pub fn with_color(mut self, col: COL) -> Self {
         self.foreground_color = Some(col);
@@ -127,7 +127,8 @@ impl<'a, Ico: IconoirIcon, COL: PixelColor> IconWidget<'a, Ico, COL> {
     pub fn with_background_color(mut self, col: COL) -> Self {
         self.background_color = Some(col);
         self
-    }}
+    }
+}
 
 impl<Ico: IconoirIcon, COL: PixelColor> Widget<COL> for IconWidget<'_, Ico, COL> {
     /// Draws the icon within the UI.
@@ -143,7 +144,10 @@ impl<Ico: IconoirIcon, COL: PixelColor> Widget<COL> for IconWidget<'_, Ico, COL>
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // find size && allocate space
-        let icon = Ico::new(self.foreground_color.unwrap_or_else(||ui.style().icon_color));
+        let icon = Ico::new(
+            self.foreground_color
+                .unwrap_or_else(|| ui.style().widget.normal.foreground_color),
+        );
         let iresponse = ui.allocate_space(icon.size())?;
 
         let prevstate = self.smartstate.clone_inner();
@@ -170,7 +174,8 @@ impl<Ico: IconoirIcon, COL: PixelColor> Widget<COL> for IconWidget<'_, Ico, COL>
                 let bg_style = PrimitiveStyle::<COL>::with_fill(self.background_color.unwrap());
                 let bg = Rectangle::new(iresponse.area.top_left, iresponse.area.size)
                     .into_styled(bg_style);
-                ui.draw(&bg).map_err(|_| GuiError::DrawError(Some("Couldn't draw Icon background")))?;
+                ui.draw(&bg)
+                    .map_err(|_| GuiError::DrawError(Some("Couldn't draw Icon background")))?;
             }
 
             ui.draw(&img)

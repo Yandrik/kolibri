@@ -632,7 +632,7 @@ pub fn draw_keyboard<
         }
     }
     if ui
-        .add(IconButton::<size16px::navigation::NavArrowLeft>::new_from_type())
+        .add(IconButton::<size16px::navigation::NavArrowLeft, COL>::new_from_type())
         .clicked()
     {
         clicked = true;
@@ -711,12 +711,13 @@ pub fn draw_keyboard<
 
     ui.sub_ui(|ui| {
         if *shift {
-            ui.style_mut().item_background_color = ui.style().primary_color;
+            ui.style_mut().widget.normal.background_color =
+                ui.style().widget.active.background_color;
         }
 
         if ui
             .add({
-                let b = IconButton::<size16px::navigation::NavArrowUp>::new_from_type();
+                let b = IconButton::<size16px::navigation::NavArrowUp, COL>::new_from_type();
                 if let Some(smartstates) = smartstates.as_mut() {
                     b.smartstate(smartstates.nxt())
                 } else {
@@ -772,7 +773,7 @@ pub fn draw_keyboard<
 
     if ui
         .add({
-            let b = IconButton::<size16px::navigation::NavArrowDown>::new_from_type();
+            let b = IconButton::<size16px::navigation::NavArrowDown, COL>::new_from_type();
             if let Some(smartstates) = smartstates.as_mut() {
                 b.smartstate(smartstates.nxt())
             } else {
