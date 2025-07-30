@@ -155,8 +155,8 @@ impl Response {
     }
 }
 
-pub trait Widget {
-    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
+pub trait Widget<COL: PixelColor> {
+    fn draw<DRAW: DrawTarget<Color = COL>>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response>;
@@ -774,7 +774,11 @@ where
     /// # let mut widget = Label::new("Hi");
     /// let response = ui.add_and_clear_col_remainder(widget, true);
     /// ```
-    pub fn add_and_clear_col_remainder(&mut self, widget: impl Widget, clear: bool) -> Response {
+    pub fn add_and_clear_col_remainder(
+        &mut self,
+        widget: impl Widget<COL>,
+        clear: bool,
+    ) -> Response {
         let resp = self.add_raw(widget).unwrap_or_else(Response::from_error);
         if clear {
             self.clear_row_to_end().ok();
@@ -810,7 +814,7 @@ where
     /// # let mut widget = Label::new("Hi");
     /// let response = ui.add(widget);
     /// ```
-    pub fn add(&mut self, widget: impl Widget) -> Response {
+    pub fn add(&mut self, widget: impl Widget<COL>) -> Response {
         let resp = self.add_raw(widget).unwrap_or_else(Response::from_error);
         self.new_row();
         resp
@@ -843,7 +847,7 @@ where
     /// # let mut widget = Label::new("Hi");
     /// let response = ui.add_centered(widget);
     /// ```
-    pub fn add_centered(&mut self, widget: impl Widget) -> Response {
+    pub fn add_centered(&mut self, widget: impl Widget<COL>) -> Response {
         let align = self.placer.align;
         self.placer.align = Align(HorizontalAlign::Center, align.1);
         let resp = self.add_raw(widget).unwrap_or_else(Response::from_error);
@@ -879,7 +883,7 @@ where
     /// # let mut widget = Label::new("Hi");
     /// let response = ui.add_horizontal(widget);
     /// ```
-    pub fn add_horizontal(&mut self, widget: impl Widget) -> Response {
+    pub fn add_horizontal(&mut self, widget: impl Widget<COL>) -> Response {
         let resp = self.add_raw(widget).unwrap_or_else(Response::from_error);
         // Allocate space between widgets; ignore space errors.
         self.allocate_space_no_wrap(self.style().spacing.item_spacing)
@@ -917,7 +921,7 @@ where
     ///     Err(e) => { /* handle error */ },
     /// }
     /// ```
-    pub fn add_raw(&mut self, mut widget: impl Widget) -> GuiResult<Response> {
+    pub fn add_raw(&mut self, mut widget: impl Widget<COL>) -> GuiResult<Response> {
         let res = widget.draw(self);
         if let (Ok(res), Some(debug_color)) = (&res, self.debug_color) {
             res.internal

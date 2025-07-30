@@ -501,22 +501,22 @@ impl<'a> Layout<'a> {
 /// * `ui`: The `Ui` to draw to.
 /// * `layout`: The `Layout` to use for the keyboard.
 /// * `smartstates`: The `SmartstateProvider` to use for the keyboard.
-///    If `None`, no smartstates will be used.
+/// If `None`, no smartstates will be used.
 /// * `draw_num_row`: Whether the number row shall be drawn
 /// * `pad`: Whether to pad the rows so that they appear more centered (more like a "real" keyboard)
-///     padding generally looks better with lower `button_padding` and `spacing` than standard.
+///  padding generally looks better with lower `button_padding` and `spacing` than standard.
 /// * `shift`: The boolean to use for the shift state.
-///    If this changes, the returned `response.changed()` will be `true`.
+///  If this changes, the returned `response.changed()` will be `true`.
 /// * `open`: The boolean to use for the open state. If this is `false`, the keyboard will not be drawn.
-///    If this changes, the returned `response.changed()` will be `true`.
+///  If this changes, the returned `response.changed()` will be `true`.
 /// * `text`: The string to add / remove characters to / from.
-///    If this changes, the returned `response.changed()` will be `true`.
+///  If this changes, the returned `response.changed()` will be `true`.
 ///
 /// # Returns
 ///
 /// * A `Response` made from an `InternalResponse::empty()`.
-///     If a key was pressed, shift was clicked, or a key was erased, `response.changed()` will be `true`.
-///     If a key was pressed (irrelevant of changes), `response.clicked()` will be `true`.
+///  If a key was pressed, shift was clicked, or a key was erased, `response.changed()` will be `true`.
+///  If a key was pressed (irrelevant of changes), `response.clicked()` will be `true`.
 #[allow(clippy::too_many_arguments)]
 pub fn draw_keyboard<
     DRAW: DrawTarget<Color = COL>,
@@ -632,7 +632,7 @@ pub fn draw_keyboard<
         }
     }
     if ui
-        .add(IconButton::<size16px::navigation::NavArrowLeft>::new_from_type())
+        .add(IconButton::<size16px::navigation::NavArrowLeft, COL>::new_from_type())
         .clicked()
     {
         clicked = true;
@@ -711,12 +711,13 @@ pub fn draw_keyboard<
 
     ui.sub_ui(|ui| {
         if *shift {
-            ui.style_mut().item_background_color = ui.style().primary_color;
+            ui.style_mut().widget.normal.background_color =
+                ui.style().widget.active.background_color;
         }
 
         if ui
             .add({
-                let b = IconButton::<size16px::navigation::NavArrowUp>::new_from_type();
+                let b = IconButton::<size16px::navigation::NavArrowUp, COL>::new_from_type();
                 if let Some(smartstates) = smartstates.as_mut() {
                     b.smartstate(smartstates.nxt())
                 } else {
@@ -772,7 +773,7 @@ pub fn draw_keyboard<
 
     if ui
         .add({
-            let b = IconButton::<size16px::navigation::NavArrowDown>::new_from_type();
+            let b = IconButton::<size16px::navigation::NavArrowDown, COL>::new_from_type();
             if let Some(smartstates) = smartstates.as_mut() {
                 b.smartstate(smartstates.nxt())
             } else {

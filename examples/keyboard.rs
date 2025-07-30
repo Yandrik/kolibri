@@ -86,7 +86,7 @@ fn main() -> Result<(), core::convert::Infallible> {
         {
             open = true;
         };
-        ui.add(IconWidget::<size24px::layout::CornerBottomLeft>::new_from_type());
+        ui.add(IconWidget::<size24px::layout::CornerBottomLeft,Rgb565>::new_from_type());
 
         // ui.add(Keyboard::new(Layout::qwerty(), &mut None, &mut false));
 

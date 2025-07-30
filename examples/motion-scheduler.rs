@@ -60,8 +60,8 @@ enum ButtonPress {
     Center,
 }
 
-impl Widget for StepWidget<'_> {
-    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
+impl<COL: PixelColor> Widget<COL> for StepWidget<'_> {
+    fn draw<DRAW: DrawTarget<Color = COL>>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
@@ -77,7 +77,7 @@ impl Widget for StepWidget<'_> {
                 Text::new(
                     &format!("{}s", dur.as_secs()),
                     Point::zero(),
-                    MonoTextStyle::new(&ui.style().default_font, ui.style().text_color),
+                    MonoTextStyle::new(&ui.style().default_font, ui.style().widget.normal.foreground_color),
                 )
                 .bounding_box()
                 .size
@@ -168,9 +168,9 @@ impl Widget for StepWidget<'_> {
 
             let icon =
                 size18px::navigation::NavArrowUp::new(if matches!(intr, Some(ButtonPress::Up)) {
-                    ui.style().primary_color
+                    ui.style().widget.active.background_color
                 } else {
-                    ui.style().icon_color
+                    ui.style().widget.normal.foreground_color
                 });
             let top_nav = Image::new(
                 &icon,
@@ -181,9 +181,9 @@ impl Widget for StepWidget<'_> {
             ui.draw(&top_nav)?;
 
             let col = if matches!(intr, Some(ButtonPress::Center)) {
-                ui.style().primary_color
+                ui.style().widget.active.background_color
             } else {
-                ui.style().icon_color
+                ui.style().widget.normal.foreground_color
             };
             let pos = iresponse.area.top_left
                 + Point::new(
@@ -258,9 +258,9 @@ impl Widget for StepWidget<'_> {
             ui.draw(&Image::new(
                 &size18px::navigation::NavArrowDown::new(
                     if matches!(intr, Some(ButtonPress::Down)) {
-                        ui.style().primary_color
+                        ui.style().widget.active.background_color
                     } else {
-                        ui.style().icon_color
+                        ui.style().widget.normal.foreground_color
                     },
                 ),
                 iresponse.area.top_left

@@ -6,10 +6,10 @@
 //!
 //! ## Core Features
 //!
-//! - Combines icon display with button interaction (click, hover, press states)
+//! - Combines icon display with button interaction (click, hover, press, disabled states)
 //! - Optional subtitle/label text below the icon
-//! - Visual feedback via color changes for different interaction states
-//! - Integration with Kolibri's theming system
+//! - Visual feedback via color and border changes for different interaction states
+//! - Integration with Kolibri's theming system with the ability to specify a custom widget style
 //! - Support for the smartstate system for efficient redrawing
 //!
 //! ## Usage
@@ -59,6 +59,7 @@
 //! - Pressed/Active: Primary color background with highlighted border
 //!
 use crate::smartstate::{Container, Smartstate};
+use crate::style::WidgetStyle;
 use crate::ui::{GuiResult, Interaction, Response, Ui, Widget};
 use core::cmp::max;
 use core::marker::PhantomData;
@@ -68,22 +69,25 @@ use embedded_graphics::image::Image;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
+use embedded_graphics::primitives::{PrimitiveStyle, PrimitiveStyleBuilder, Rectangle};
 use embedded_graphics::text::{Alignment, Baseline, Text};
 use embedded_iconoir::prelude::{IconoirIcon, IconoirNewIcon};
 
 /// A button widget that displays an icon with optional text label.
 ///
 /// [IconButton] combines the visual display of an icon with interactive button
-/// behavior. It changes appearance based on user interaction (normal, hover, pressed)
+/// behavior. It changes appearance based on user interaction (normal, hover, pressed, disabled)
 /// and can optionally display a text label underneath the icon.
-pub struct IconButton<'a, ICON: IconoirIcon> {
+pub struct IconButton<'a, ICON: IconoirIcon, COL: PixelColor> {
     icon: PhantomData<ICON>,
     label: Option<&'a str>,
     smartstate: Container<'a, Smartstate>,
+    is_enabled: bool,
+    is_modified: bool,
+    custom_style: Option<WidgetStyle<COL>>,
 }
 
-impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
+impl<'a, ICON: IconoirIcon, COL: PixelColor> IconButton<'a, ICON, COL> {
     /// Creates a new [IconButton] from an [IconoirIcon] instance.
     ///
     /// The icon color from the icon instance will be ignored, as the widget
@@ -119,6 +123,9 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
             icon: PhantomData,
             smartstate: Container::empty(),
             label: None,
+            is_enabled: true,
+            is_modified: false,
+            custom_style: None,
         }
     }
 
@@ -185,6 +192,9 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
             icon: PhantomData,
             smartstate: Container::empty(),
             label: None,
+            is_enabled: true,
+            is_modified: false,
+            custom_style: None,
         }
     }
 
@@ -221,9 +231,35 @@ impl<'a, ICON: IconoirIcon> IconButton<'a, ICON> {
         self.smartstate.set(smartstate);
         self
     }
+
+    /// Enables or disables the widget - will not respond to interaction when not enabled
+    ///
+    /// # Arguments
+    /// * `enabled` - if the button should be enabled (true) or disabled(false)
+    ///
+    /// # Returns
+    /// Self with is_enabled set
+    pub fn enable(mut self, enabled: &bool) -> Self {
+        self.is_modified = true;
+        self.is_enabled = *enabled;
+        self
+    }
+
+    /// Specifies a custom widget style
+    ///
+    /// # Arguments
+    /// * `style` WidgetStyle
+    ///
+    /// # Returns
+    /// Self with custom_style set
+    pub fn with_widget_style(mut self, style: WidgetStyle<COL>) -> Self {
+        self.is_modified = true;
+        self.custom_style = Some(style);
+        self
+    }
 }
 
-impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
+impl<ICON: IconoirIcon, COL: PixelColor> Widget<COL> for IconButton<'_, ICON, COL> {
     /// Draws the icon button within the UI.
     ///
     /// This method:
@@ -234,15 +270,17 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
     /// 5. Manages visual appearance based on interaction state
     /// 6. Updates the smartstate and draws when necessary
     /// 7. Returns a response that includes click information
-    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
+    fn draw<DRAW: DrawTarget<Color = COL>>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
+        let widget_style = self.custom_style.unwrap_or_else(|| ui.style().widget);
+        let fg_color: COL;
         // get size
-        let icon = ICON::new(ui.style().icon_color);
+        let mut icon = ICON::new(widget_style.normal.foreground_color);
 
         let padding = ui.style().spacing.button_padding;
-        let border = ui.style().border_width;
+        let border = widget_style.normal.border_width;
 
         let mut min_height = icon.bounding_box().size.height + 2 * padding.height + 2 * border;
 
@@ -254,7 +292,7 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
             let mut text = Text::new(
                 label,
                 Point::new(0, 0),
-                MonoTextStyle::new(&font, ui.style().text_color),
+                MonoTextStyle::new(&font, widget_style.normal.foreground_color),
             );
             text.text_style.alignment = Alignment::Center;
             text.text_style.baseline = Baseline::Top;
@@ -298,8 +336,6 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
                     / 2) as i32,
             );
 
-        let icon_img = Image::new(&icon, center_offset);
-
         // center text (if it exists)
         if let Some(text) = text.as_mut() {
             let center_offset = iresponse.area.top_left
@@ -322,38 +358,66 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
 
         // styles and smartstate
         let prevstate = self.smartstate.clone_inner();
+        let rect_style: PrimitiveStyle<COL>;
 
-        let rect_style = match iresponse.interaction {
-            Interaction::None => {
-                self.smartstate.modify(|st| *st = Smartstate::state(1));
+        if self.is_enabled {
+            rect_style = match iresponse.interaction {
+                Interaction::None => {
+                    self.smartstate.modify(|st| *st = Smartstate::state(1));
 
-                PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().border_color)
-                    .stroke_width(ui.style().border_width)
-                    .fill_color(ui.style().item_background_color)
-                    .build()
-            }
-            Interaction::Hover(_) => {
-                self.smartstate.modify(|st| *st = Smartstate::state(2));
-                PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().highlight_border_color)
-                    .stroke_width(ui.style().highlight_border_width)
-                    .fill_color(ui.style().highlight_item_background_color)
-                    .build()
-            }
+                    PrimitiveStyleBuilder::new()
+                        .stroke_color(widget_style.normal.border_color)
+                        .stroke_width(widget_style.normal.border_width)
+                        .fill_color(widget_style.normal.background_color)
+                        .build()
+                }
+                Interaction::Hover(_) => {
+                    self.smartstate.modify(|st| *st = Smartstate::state(2));
+                    PrimitiveStyleBuilder::new()
+                        .stroke_color(widget_style.hover.border_color)
+                        .stroke_width(widget_style.hover.border_width)
+                        .fill_color(widget_style.hover.background_color)
+                        .build()
+                }
 
-            _ => {
-                self.smartstate.modify(|st| *st = Smartstate::state(3));
+                _ => {
+                    self.smartstate.modify(|st| *st = Smartstate::state(3));
 
-                PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().highlight_border_color)
-                    .stroke_width(ui.style().highlight_border_width)
-                    .fill_color(ui.style().primary_color)
-                    .build()
-            }
-        };
+                    PrimitiveStyleBuilder::new()
+                        .stroke_color(widget_style.active.border_color)
+                        .stroke_width(widget_style.active.border_width)
+                        .fill_color(widget_style.active.background_color)
+                        .build()
+                }
+            };
+            match iresponse.interaction {
+                Interaction::None => {
+                    fg_color = widget_style.normal.foreground_color;
+                }
+                Interaction::Hover(_) => {
+                    fg_color = widget_style.hover.foreground_color;
+                }
+                _ => {
+                    fg_color = widget_style.active.foreground_color;
+                }
+            };
+        } else {
+            rect_style = PrimitiveStyleBuilder::new()
+                .stroke_color(widget_style.disabled.border_color)
+                .stroke_width(widget_style.disabled.border_width)
+                .fill_color(widget_style.disabled.background_color)
+                .build();
+            fg_color = widget_style.disabled.foreground_color;
+        }
 
-        if !self.smartstate.eq_option(&prevstate) {
+        icon.set_color(fg_color);
+        let icon_img = Image::new(&icon, center_offset);
+
+        if let Some(text) = text.as_mut() {
+            text.character_style.text_color = Some(fg_color);
+        }
+
+        if !self.smartstate.eq_option(&prevstate) || self.is_modified {
             ui.start_drawing(&iresponse.area);
 
             ui.draw(
@@ -368,13 +432,18 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
 
             ui.finalize()?;
         }
+        self.is_modified = false;
 
-        Ok(Response::new(iresponse).set_clicked(click).set_down(down))
+        if self.is_enabled {
+            Ok(Response::new(iresponse).set_clicked(click).set_down(down))
+        } else {
+            Ok(Response::new(iresponse).set_clicked(false).set_down(false))
+        }
     }
 }
 
 // Implement common traits for IconButton
-impl<ICON: IconoirIcon> core::fmt::Debug for IconButton<'_, ICON> {
+impl<ICON: IconoirIcon, COL: PixelColor> core::fmt::Debug for IconButton<'_, ICON, COL> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("IconButton")
             .field("type", &core::any::type_name::<ICON>())

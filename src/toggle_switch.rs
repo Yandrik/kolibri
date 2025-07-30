@@ -10,6 +10,7 @@
 //! with the framework's [Smartstate] system for efficient rendering.
 
 use crate::smartstate::{Container, Smartstate};
+use crate::style::WidgetStyle;
 use crate::ui::{GuiError, GuiResult, Interaction, Response, Ui, Widget};
 use core::cmp::max;
 use embedded_graphics::draw_target::DrawTarget;
@@ -59,23 +60,29 @@ use embedded_graphics::primitives::{
 ///     .width(60)
 ///     .height(30));
 /// ```
-pub struct ToggleSwitch<'a> {
+pub struct ToggleSwitch<'a, COL: PixelColor> {
     active: &'a mut bool,
     smartstate: Container<'a, Smartstate>,
     width: u32,
     height: u32,
+    is_enabled: bool,
+    is_modified: bool,
+    custom_style: Option<WidgetStyle<COL>>,
 }
 
-impl<'a> ToggleSwitch<'a> {
+impl<'a, COL: PixelColor> ToggleSwitch<'a, COL> {
     /// Creates a new [ToggleSwitch] instance with the provided mutable reference to the active state.
     ///
     /// The new [ToggleSwitch] will have a default width of 50 pixels and a height of 25 pixels.
-    pub fn new(active: &'a mut bool) -> ToggleSwitch<'a> {
+    pub fn new(active: &'a mut bool) -> ToggleSwitch<'a, COL> {
         ToggleSwitch {
             active,
             smartstate: Container::empty(),
             width: 50,
             height: 25,
+            is_enabled: true,
+            is_modified: false,
+            custom_style: None,
         }
     }
 
@@ -153,13 +160,41 @@ impl<'a> ToggleSwitch<'a> {
         self.height = max(height, 15); // Enforce a minimum height
         self
     }
+
+    /// Enables or disables the widget - will not respond to interaction
+    ///
+    /// # Arguments
+    /// * `enabled` - if the widget should be enabled (true) or disabled(false)
+    ///
+    /// # Returns
+    /// Self with is_enabled set
+    pub fn enable(mut self, enabled: &bool) -> Self {
+        self.is_modified = true;
+        self.is_enabled = *enabled;
+        self
+    }
+
+    /// Specifies the context for the widget to determine how it is styled
+    ///
+    /// # Arguments
+    /// * `context` - Context::Normal, Context::Primary, Context::Secondary
+    ///
+    /// # Returns
+    /// Self with context set
+    pub fn with_widget_style(mut self, style: WidgetStyle<COL>) -> Self {
+        self.is_modified = true;
+        self.custom_style = Some(style);
+        self
+    }
 }
 
-impl Widget for ToggleSwitch<'_> {
-    fn draw<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
+impl<COL: PixelColor> Widget<COL> for ToggleSwitch<'_, COL> {
+    fn draw<DRAW: DrawTarget<Color = COL>>(
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
+        let widget_style = self.custom_style.unwrap_or_else(|| ui.style().widget);
+
         // Calculate total size including padding
         let padding = ui.style().spacing.button_padding;
         let total_size = Size::new(
@@ -177,24 +212,43 @@ impl Widget for ToggleSwitch<'_> {
             changed = true;
         }
 
-        // Colors for active and inactive states
-        let switch_color = if *self.active {
-            ui.style().primary_color
+        // Determine colors based on state
+        let switch_color: COL;
+        let knob_color: COL;
+        let border_color: COL;
+        let border_width: u32;
+
+        if self.is_enabled {
+            if *self.active {
+                switch_color = widget_style.active.background_color;
+            } else {
+                switch_color = widget_style.normal.background_color
+            };
+
+            match iresponse.interaction {
+                Interaction::Click(_) | Interaction::Drag(_) => {
+                    knob_color = widget_style.active.background_color;
+                    border_color = widget_style.active.border_color;
+                    border_width = widget_style.active.border_width;
+                }
+
+                Interaction::Hover(_) => {
+                    knob_color = widget_style.hover.background_color;
+                    border_color = widget_style.hover.border_color;
+                    border_width = widget_style.hover.border_width;
+                }
+                _ => {
+                    knob_color = widget_style.normal.background_color;
+                    border_color = widget_style.normal.border_color;
+                    border_width = widget_style.normal.border_width;
+                }
+            };
         } else {
-            ui.style().item_background_color
-        };
-
-        let knob_color = match iresponse.interaction {
-            Interaction::Click(_) | Interaction::Drag(_) => ui.style().primary_color,
-            Interaction::Hover(_) => ui.style().highlight_item_background_color,
-            _ => ui.style().item_background_color,
-        };
-
-        // Determine border color based on interaction
-        let border_color = match iresponse.interaction {
-            Interaction::Hover(_) => ui.style().highlight_border_color,
-            _ => ui.style().border_color,
-        };
+            switch_color = widget_style.disabled.background_color;
+            knob_color = widget_style.disabled.background_color;
+            border_color = widget_style.disabled.border_color;
+            border_width = widget_style.disabled.border_width;
+        }
 
         // Inside the draw method, replace the current smartstate handling with:
 
@@ -213,7 +267,7 @@ impl Widget for ToggleSwitch<'_> {
         self.smartstate.modify(|st| *st = Smartstate::state(state));
 
         // Determine if redraw is needed based on state change or active state change
-        let redraw = !self.smartstate.eq_option(&prevstate) || changed;
+        let redraw = !self.smartstate.eq_option(&prevstate) || changed || self.is_modified;
 
         if redraw {
             ui.start_drawing(&iresponse.area);
@@ -231,25 +285,25 @@ impl Widget for ToggleSwitch<'_> {
             let switch_style = PrimitiveStyleBuilder::new()
                 .fill_color(switch_color)
                 .stroke_color(border_color)
-                .stroke_width(ui.style().border_width)
+                .stroke_width(border_width)
                 .build();
 
             ui.draw(&switch_rect.into_styled(switch_style))
                 .map_err(|_| GuiError::DrawError(Some("Couldn't draw ToggleSwitch background")))?;
 
             // Calculate knob position
-            let knob_radius = (self.height / 2) - ui.style().border_width;
+            let knob_radius = (self.height / 2) - border_width;
             let knob_x = if *self.active {
                 // Positioned on the right
                 iresponse.area.top_left.x + padding.width as i32 + self.width as i32
                     - knob_radius as i32
-                    - ui.style().border_width as i32
+                    - border_width as i32
             } else {
                 // Positioned on the left
                 iresponse.area.top_left.x
                     + padding.width as i32
                     + knob_radius as i32
-                    + ui.style().border_width as i32
+                    + border_width as i32
             };
 
             let knob_center = Point::new(
@@ -270,16 +324,24 @@ impl Widget for ToggleSwitch<'_> {
 
             ui.finalize()?;
         }
+        self.is_modified = false;
 
-        let click = matches!(iresponse.interaction, Interaction::Release(_));
-        let down = matches!(
-            iresponse.interaction,
-            Interaction::Click(_) | Interaction::Drag(_)
-        );
+        if self.is_enabled {
+            let click = matches!(iresponse.interaction, Interaction::Release(_));
+            let down = matches!(
+                iresponse.interaction,
+                Interaction::Click(_) | Interaction::Drag(_)
+            );
 
-        Ok(Response::new(iresponse)
-            .set_clicked(click)
-            .set_down(down)
-            .set_changed(changed))
+            Ok(Response::new(iresponse)
+                .set_clicked(click)
+                .set_down(down)
+                .set_changed(changed))
+        } else {
+            Ok(Response::new(iresponse)
+                .set_clicked(false)
+                .set_down(false)
+                .set_changed(false))
+        }
     }
 }
