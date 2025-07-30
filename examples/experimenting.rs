@@ -1,6 +1,7 @@
 use embedded_graphics::geometry::Size;
+use embedded_graphics::mono_font::ascii;
 use embedded_graphics::pixelcolor::Rgb565;
-use embedded_graphics::prelude::Point;
+use embedded_graphics::prelude::{Point, WebColors};
 use embedded_graphics_simulator::sdl2::MouseButton;
 use embedded_graphics_simulator::{
     OutputSettingsBuilder, SimulatorDisplay, SimulatorEvent, Window,
@@ -9,7 +10,7 @@ use kolibri_embedded_gui::button::Button;
 use kolibri_embedded_gui::icon::IconWidget;
 use kolibri_embedded_gui::iconbutton::IconButton;
 use kolibri_embedded_gui::icons::size24px;
-use kolibri_embedded_gui::label::{HashLabel, Hasher};
+use kolibri_embedded_gui::label::{HashLabel, Hasher, Label};
 use kolibri_embedded_gui::slider::Slider;
 use kolibri_embedded_gui::smartstate::SmartstateProvider;
 use kolibri_embedded_gui::style::*;
@@ -68,6 +69,12 @@ fn main() -> Result<(), core::convert::Infallible> {
         }
 
         last_down = mouse_down;
+
+        ui.add(
+            Label::new("Experimenting Example")
+                .with_font(ascii::FONT_10X20)
+                .with_color(Rgb565::CSS_BLUE_VIOLET),
+        );
 
         if ui
             .add_horizontal(Button::new("Something").smartstate(smartstates.nxt()))
