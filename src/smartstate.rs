@@ -1,3 +1,8 @@
+use core::hash::BuildHasher;
+use core::hash::Hash;
+
+use foldhash::fast::FixedState;
+
 /// A container for an optional mutable reference to a value.
 ///
 /// This container is primarily used with [`Smartstate`] to manage widget state and redraw behavior.
@@ -93,6 +98,9 @@ impl<T: PartialEq> Container<'_, T> {
         }
     }
 }
+
+/// Hasher for hashed smartstates.
+const HASH_STATE: FixedState = FixedState::with_seed(0x3094572067945102 /* random number */);
 
 #[derive(Clone, Copy, Debug)]
 /// Smartstates are used to dynamically redraw widgets. By doing so, there's no need to redraw
@@ -213,6 +221,12 @@ impl Smartstate {
         self.1 = true;
     }
 
+    /// Sets the current state ID based on a hash of the provided value.
+    pub fn set_state_hashed<T: Hash + ?Sized>(&mut self, to_hash: &T) {
+        self.0 = HASH_STATE.hash_one(to_hash) as u32;
+        self.1 = true;
+    }
+
     /// Returns true if this is an empty/invalid state.
     pub fn is_empty(&self) -> bool {
         !self.1
@@ -221,6 +235,11 @@ impl Smartstate {
     /// Returns true if this matches the given state ID and is valid.
     pub fn is_state(&self, state: u32) -> bool {
         self.1 && self.0 == state
+    }
+
+    /// Returns true if this matches the given state ID and is valid, using a hash.
+    pub fn is_state_hashed<T: Hash + ?Sized>(&self, to_hash: &T) -> bool {
+        self.1 && self.0 == HASH_STATE.hash_one(to_hash) as u32
     }
 
     /// Forces a redraw by invalidating the current state.
