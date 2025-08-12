@@ -233,10 +233,10 @@ impl Widget for Label<'_> {
             while is_too_big {
                 if text.text.len() > 4 {
                     // one UTF8 character can be up to 4 bytes
-                    text.text = &text.text.get(..text.text.len() - 2).unwrap_or(""); // trim one byte off the end
-                                                                                     // keep trimming one byte off until the prev char boundary
+                    text.text.get(..text.text.len() - 2).unwrap_or(""); // trim one byte off the end
+                    // keep trimming one byte off until the prev char boundary
                     while !text.text.is_char_boundary(text.text.len()) {
-                        text.text = &text.text.get(..text.text.len() - 2).unwrap_or("");
+                        text.text.get(..text.text.len() - 2).unwrap_or("");
                     }
                     // once str floor_char_boundary issue 93483 is merged replace the above with the following line
                     //let new_len = self.text.floor_char_boundary(self.text.len() * (ui.space_available().width / size.size.width) as usize - 1);
@@ -280,7 +280,7 @@ impl Widget for Label<'_> {
                     "...",
                     Point::new(
                         text.bounding_box().size.width as i32,
-                        text.bounding_box().bottom_right().unwrap().y as i32,
+                        text.bounding_box().bottom_right().unwrap().y,
                     ),
                     MonoTextStyle::new(&font, ui.style().text_color),
                 );
@@ -504,10 +504,10 @@ impl Widget for HashLabel<'_> {
             while is_too_big {
                 if text.text.len() > 4 {
                     // one UTF8 character can be up to 4 bytes
-                    text.text = &text.text.get(..text.text.len() - 2).unwrap_or(""); // trim one byte off the end
+                    text.text.get(..text.text.len() - 2).unwrap_or(""); // trim one byte off the end
                                                                                      // keep trimming one byte off until the prev char boundary
                     while !text.text.is_char_boundary(text.text.len()) {
-                        text.text = &text.text.get(..text.text.len() - 2).unwrap_or("");
+                        text.text.get(..text.text.len() - 2).unwrap_or("");
                     }
                     // once str floor_char_boundary issue 93483 is merged replace the above with the following line
                     //let new_len = self.text.floor_char_boundary(self.text.len() * (ui.space_available().width / size.size.width) as usize - 1);
@@ -558,7 +558,7 @@ impl Widget for HashLabel<'_> {
                     "...",
                     Point::new(
                         text.bounding_box().size.width as i32,
-                        text.bounding_box().bottom_right().unwrap().y as i32,
+                        text.bounding_box().bottom_right().unwrap().y,
                     ),
                     MonoTextStyle::new(&font, ui.style().text_color),
                 );
