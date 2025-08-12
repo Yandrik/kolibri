@@ -96,6 +96,7 @@ pub struct Label<'a> {
     text: &'a str,
     font: Option<MonoFont<'a>>,
     smartstate: Container<'a, Smartstate>,
+    is_auto_truncate: bool,
 }
 
 impl<'a> Label<'a> {
@@ -128,6 +129,7 @@ impl<'a> Label<'a> {
             text,
             font: None,
             smartstate: Container::empty(),
+            is_auto_truncate: false,
         }
     }
 
@@ -195,6 +197,12 @@ impl<'a> Label<'a> {
         self.smartstate.set(smartstate);
         self
     }
+
+    /// if the text is too long to fit within the available width calling this will reduce the length of the text and append an ellipsis (...)
+    pub fn auto_truncate(mut self) -> Self {
+        self.is_auto_truncate = true;
+        self
+    }
 }
 
 impl Widget for Label<'_> {
@@ -202,28 +210,48 @@ impl Widget for Label<'_> {
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
-        // get size
-
-        let font = if let Some(font) = self.font {
-            font
-        } else {
-            ui.style().default_font
-        };
-
+        // get size of text
+        let mut is_ellipsis = false;
+        let font = self.font.unwrap_or(ui.style().default_font);
         let mut text = Text::new(
             self.text,
             Point::new(0, 0),
             MonoTextStyle::new(&font, ui.style().text_color),
         );
-
-        let size = text.bounding_box();
-
+        let mut size = text.bounding_box();
+        // if the text is too long to fit reduce the length if auto_truncate is set
+        if size.size.width > ui.space_available().width && self.is_auto_truncate {
+            // work out how wide the text can be
+            let ellipsis = Text::new(
+                "...",
+                Point::new(0, 0),
+                MonoTextStyle::new(&font, ui.style().text_color),
+            );
+            let ellipsis_width = ellipsis.bounding_box().size.width;
+            let mut is_too_big = true;
+            let target_width = ui.space_available().width - ellipsis_width;
+            while is_too_big {
+                if text.text.len() > 4 {
+                    // one UTF8 character can be up to 4 bytes
+                    text.text = &text.text.get(..text.text.len() - 2).unwrap_or(""); // trim one byte off the end
+                                                                                     // keep trimming one byte off until the prev char boundary
+                    while !text.text.is_char_boundary(text.text.len()) {
+                        text.text = &text.text.get(..text.text.len() - 2).unwrap_or("");
+                    }
+                    // once str floor_char_boundary issue 93483 is merged replace the above with the following line
+                    //let new_len = self.text.floor_char_boundary(self.text.len() * (ui.space_available().width / size.size.width) as usize - 1);
+                    is_too_big = text.bounding_box().size.width > target_width;
+                    is_ellipsis = true;
+                } else {
+                    is_too_big = false; // give up as string is too short
+                }
+            }
+        }
+        size = text.bounding_box();
         // allocate space
-
         let iresponse = ui.allocate_space(Size::new(size.size.width, size.size.height))?;
 
         // move text (center vertically)
-
         text.translate_mut(iresponse.area.top_left.add(Point::new(
             0,
             (iresponse.area.size.height - size.size.height) as i32 / 2,
@@ -245,8 +273,33 @@ impl Widget for Label<'_> {
 
             ui.draw(&text)
                 .map_err(|_| GuiError::DrawError(Some("Couldn't draw text")))?;
-
             ui.finalize()?;
+
+            if is_ellipsis {
+                let mut ellipsis = Text::new(
+                    "...",
+                    Point::new(
+                        text.bounding_box().size.width as i32,
+                        text.bounding_box().bottom_right().unwrap().y as i32,
+                    ),
+                    MonoTextStyle::new(&font, ui.style().text_color),
+                );
+                ellipsis.text_style.baseline = Baseline::Bottom;
+                let iresponse = ui.allocate_space(Size::new(
+                    ellipsis.bounding_box().size.width,
+                    ellipsis.bounding_box().size.height,
+                ))?;
+
+                ui.start_drawing(&iresponse.area);
+                // clear background if necessary
+                if !ui.cleared() {
+                    ui.clear_area(iresponse.area)?;
+                }
+
+                ui.draw(&ellipsis)
+                    .map_err(|_| GuiError::DrawError(Some("Couldn't draw ellipsis")))?;
+                ui.finalize()?;
+            }
         }
 
         Ok(Response::new(iresponse))
@@ -328,6 +381,7 @@ pub struct HashLabel<'a> {
     font: Option<MonoFont<'a>>,
     smartstate: Container<'a, Smartstate>,
     hasher: &'a Hasher,
+    is_auto_truncate: bool,
 }
 
 impl<'a> HashLabel<'a> {
@@ -370,6 +424,7 @@ impl<'a> HashLabel<'a> {
             font: None,
             smartstate: Container::new(smartstate),
             hasher,
+            is_auto_truncate: false,
         }
     }
 
@@ -405,6 +460,12 @@ impl<'a> HashLabel<'a> {
         self.font = Some(font);
         self
     }
+
+    /// if the text is too long to fit within the available width calling this will reduce the length of the text and append an ellipsis (...)
+    pub fn auto_truncate(mut self) -> Self {
+        self.is_auto_truncate = true;
+        self
+    }
 }
 
 impl Widget for HashLabel<'_> {
@@ -413,6 +474,7 @@ impl Widget for HashLabel<'_> {
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // get size
+        let mut is_ellipsis = false;
 
         let font = if let Some(font) = self.font {
             font
@@ -426,7 +488,37 @@ impl Widget for HashLabel<'_> {
             MonoTextStyle::new(&font, ui.style().text_color),
         );
 
-        let size = text.bounding_box();
+        let mut size = text.bounding_box();
+
+        // if the text is too long to fit reduce the length if auto_truncate is set
+        if size.size.width > ui.space_available().width && self.is_auto_truncate {
+            // work out how wide the text can be
+            let ellipsis = Text::new(
+                "...",
+                Point::new(0, 0),
+                MonoTextStyle::new(&font, ui.style().text_color),
+            );
+            let ellipsis_width = ellipsis.bounding_box().size.width;
+            let mut is_too_big = true;
+            let target_width = ui.space_available().width - ellipsis_width;
+            while is_too_big {
+                if text.text.len() > 4 {
+                    // one UTF8 character can be up to 4 bytes
+                    text.text = &text.text.get(..text.text.len() - 2).unwrap_or(""); // trim one byte off the end
+                                                                                     // keep trimming one byte off until the prev char boundary
+                    while !text.text.is_char_boundary(text.text.len()) {
+                        text.text = &text.text.get(..text.text.len() - 2).unwrap_or("");
+                    }
+                    // once str floor_char_boundary issue 93483 is merged replace the above with the following line
+                    //let new_len = self.text.floor_char_boundary(self.text.len() * (ui.space_available().width / size.size.width) as usize - 1);
+                    is_too_big = text.bounding_box().size.width > target_width;
+                    is_ellipsis = true;
+                } else {
+                    is_too_big = false; // give up as string is too short
+                }
+            }
+        }
+        size = text.bounding_box();
 
         // allocate space
 
@@ -460,6 +552,32 @@ impl Widget for HashLabel<'_> {
                 .map_err(|_| GuiError::DrawError(Some("Couldn't draw text")))?;
 
             ui.finalize()?;
+
+            if is_ellipsis {
+                let mut ellipsis = Text::new(
+                    "...",
+                    Point::new(
+                        text.bounding_box().size.width as i32,
+                        text.bounding_box().bottom_right().unwrap().y as i32,
+                    ),
+                    MonoTextStyle::new(&font, ui.style().text_color),
+                );
+                ellipsis.text_style.baseline = Baseline::Bottom;
+                let iresponse = ui.allocate_space(Size::new(
+                    ellipsis.bounding_box().size.width,
+                    ellipsis.bounding_box().size.height,
+                ))?;
+
+                ui.start_drawing(&iresponse.area);
+                // clear background if necessary
+                if !ui.cleared() {
+                    ui.clear_area(iresponse.area)?;
+                }
+
+                ui.draw(&ellipsis)
+                    .map_err(|_| GuiError::DrawError(Some("Couldn't draw ellipsis")))?;
+                ui.finalize()?;
+            }
         }
 
         Ok(Response::new(iresponse))

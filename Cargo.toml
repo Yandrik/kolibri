@@ -40,3 +40,6 @@ name = "motion-scheduler"
 
 [[example]]
 name = "keyboard"
+
+[[example]]
+name = "label_width"
