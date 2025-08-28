@@ -77,7 +77,7 @@ pub struct Checkbox<'a> {
 }
 
 impl<'a> Checkbox<'a> {
-    pub fn new(checked: &mut bool) -> Checkbox {
+    pub fn new(checked: &mut bool) -> Checkbox<'_> {
         Checkbox {
             checked,
             smartstate: Container::empty(),

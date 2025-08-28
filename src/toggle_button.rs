@@ -56,7 +56,6 @@ pub struct ToggleButton<'a> {
     active: &'a mut bool,
     smartstate: Container<'a, Smartstate>,
     min_width: Option<u32>,
-    is_modified: bool,
 }
 
 impl<'a> ToggleButton<'a> {
@@ -104,7 +103,7 @@ impl<'a> ToggleButton<'a> {
             active,
             smartstate: Container::empty(),
             min_width: None,
-            is_modified: false,
+            // is_modified: false,
         }
     }
 
@@ -125,7 +124,6 @@ impl<'a> ToggleButton<'a> {
     /// less than the provided minimum width the width of the widget will be increased
     pub fn with_min_width(mut self, width: u32) -> Self {
         self.min_width = Some(width);
-        self.is_modified = true;
         self
     }
 }
@@ -187,77 +185,39 @@ impl Widget for ToggleButton<'_> {
         // Determine widget style
         let style = match (*self.active, iresponse.interaction) {
             (true, Interaction::Click(_) | Interaction::Drag(_) | Interaction::Release(_)) => {
-                if self.is_modified {
-                    self.smartstate.modify(|st| *st = Smartstate::state(1));
-                } else {
-                    self.smartstate.modify(|st| *st = Smartstate::state(2));
-                }
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
                     .fill_color(ui.style().primary_color)
                     .build()
             }
-            (true, Interaction::Hover(_)) => {
-                if self.is_modified {
-                    self.smartstate.modify(|st| *st = Smartstate::state(3));
-                } else {
-                    self.smartstate.modify(|st| *st = Smartstate::state(4));
-                }
-                PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().highlight_border_color)
-                    .stroke_width(ui.style().highlight_border_width)
-                    .fill_color(ui.style().primary_color)
-                    .build()
-            }
-            (true, _) => {
-                if self.is_modified {
-                    self.smartstate.modify(|st| *st = Smartstate::state(5));
-                } else {
-                    self.smartstate.modify(|st| *st = Smartstate::state(6));
-                }
-                PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().border_color)
-                    .stroke_width(ui.style().border_width)
-                    .fill_color(ui.style().primary_color)
-                    .build()
-            }
+            (true, Interaction::Hover(_)) => PrimitiveStyleBuilder::new()
+                .stroke_color(ui.style().highlight_border_color)
+                .stroke_width(ui.style().highlight_border_width)
+                .fill_color(ui.style().primary_color)
+                .build(),
+            (true, _) => PrimitiveStyleBuilder::new()
+                .stroke_color(ui.style().border_color)
+                .stroke_width(ui.style().border_width)
+                .fill_color(ui.style().primary_color)
+                .build(),
             (false, Interaction::Click(_) | Interaction::Drag(_) | Interaction::Release(_)) => {
-                if self.is_modified {
-                    self.smartstate.modify(|st| *st = Smartstate::state(7));
-                } else {
-                    self.smartstate.modify(|st| *st = Smartstate::state(8));
-                }
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
                     .fill_color(ui.style().primary_color)
                     .build()
             }
-            (false, Interaction::Hover(_)) => {
-                if self.is_modified {
-                    self.smartstate.modify(|st| *st = Smartstate::state(9));
-                } else {
-                    self.smartstate.modify(|st| *st = Smartstate::state(10));
-                }
-                PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().highlight_border_color)
-                    .stroke_width(ui.style().highlight_border_width)
-                    .fill_color(ui.style().highlight_item_background_color)
-                    .build()
-            }
-            (false, _) => {
-                if self.is_modified {
-                    self.smartstate.modify(|st| *st = Smartstate::state(11));
-                } else {
-                    self.smartstate.modify(|st| *st = Smartstate::state(12));
-                }
-                PrimitiveStyleBuilder::new()
-                    .stroke_color(ui.style().border_color)
-                    .stroke_width(ui.style().border_width)
-                    .fill_color(ui.style().item_background_color)
-                    .build()
-            }
+            (false, Interaction::Hover(_)) => PrimitiveStyleBuilder::new()
+                .stroke_color(ui.style().highlight_border_color)
+                .stroke_width(ui.style().highlight_border_width)
+                .fill_color(ui.style().highlight_item_background_color)
+                .build(),
+            (false, _) => PrimitiveStyleBuilder::new()
+                .stroke_color(ui.style().border_color)
+                .stroke_width(ui.style().border_width)
+                .fill_color(ui.style().item_background_color)
+                .build(),
         };
 
         let redraw = !self.smartstate.eq_option(&prevstate) || changed;
