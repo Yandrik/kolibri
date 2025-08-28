@@ -50,7 +50,7 @@ use embedded_graphics::mono_font::MonoFont;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::text::{Baseline, Text};
+use embedded_graphics::text::{Alignment, Baseline, Text};
 use foldhash::fast::RandomState;
 
 /// A widget for displaying text in the UI.
@@ -212,6 +212,8 @@ impl Widget for Label<'_> {
     ) -> GuiResult<Response> {
         // get size of text
         let mut is_ellipsis = false;
+        let mut ellipsis_width = 0_u32;
+
         let font = self.font.unwrap_or(ui.style().default_font);
         let mut text = Text::new(
             self.text,
@@ -227,16 +229,16 @@ impl Widget for Label<'_> {
                 Point::new(0, 0),
                 MonoTextStyle::new(&font, ui.style().text_color),
             );
-            let ellipsis_width = ellipsis.bounding_box().size.width;
+            ellipsis_width = ellipsis.bounding_box().size.width;
             let mut is_too_big = true;
             let target_width = ui.space_available().width - ellipsis_width;
             while is_too_big {
                 if text.text.len() > 4 {
                     // one UTF8 character can be up to 4 bytes
-                    text.text.get(..text.text.len() - 2).unwrap_or(""); // trim one byte off the end
-                    // keep trimming one byte off until the prev char boundary
+                    text.text = text.text.get(..text.text.len() - 2).unwrap_or(""); // trim one byte off the end
+                                                                                    // keep trimming one byte off until the prev char boundary
                     while !text.text.is_char_boundary(text.text.len()) {
-                        text.text.get(..text.text.len() - 2).unwrap_or("");
+                        text.text = text.text.get(..text.text.len() - 2).unwrap_or("");
                     }
                     // once str floor_char_boundary issue 93483 is merged replace the above with the following line
                     //let new_len = self.text.floor_char_boundary(self.text.len() * (ui.space_available().width / size.size.width) as usize - 1);
@@ -248,6 +250,8 @@ impl Widget for Label<'_> {
             }
         }
         size = text.bounding_box();
+        let ellipsis_x_pos = size.size.width as i32;
+        size.size.width += ellipsis_width;
         // allocate space
         let iresponse = ui.allocate_space(Size::new(size.size.width, size.size.height))?;
 
@@ -273,33 +277,23 @@ impl Widget for Label<'_> {
 
             ui.draw(&text)
                 .map_err(|_| GuiError::DrawError(Some("Couldn't draw text")))?;
-            ui.finalize()?;
 
             if is_ellipsis {
                 let mut ellipsis = Text::new(
                     "...",
                     Point::new(
-                        text.bounding_box().size.width as i32,
+                        ellipsis_x_pos,
                         text.bounding_box().bottom_right().unwrap().y,
                     ),
                     MonoTextStyle::new(&font, ui.style().text_color),
                 );
                 ellipsis.text_style.baseline = Baseline::Bottom;
-                let iresponse = ui.allocate_space(Size::new(
-                    ellipsis.bounding_box().size.width,
-                    ellipsis.bounding_box().size.height,
-                ))?;
-
-                ui.start_drawing(&iresponse.area);
-                // clear background if necessary
-                if !ui.cleared() {
-                    ui.clear_area(iresponse.area)?;
-                }
+                ellipsis.text_style.alignment = Alignment::Left;
 
                 ui.draw(&ellipsis)
                     .map_err(|_| GuiError::DrawError(Some("Couldn't draw ellipsis")))?;
-                ui.finalize()?;
             }
+            ui.finalize()?;
         }
 
         Ok(Response::new(iresponse))
@@ -475,6 +469,7 @@ impl Widget for HashLabel<'_> {
     ) -> GuiResult<Response> {
         // get size
         let mut is_ellipsis = false;
+        let mut ellipsis_width = 0u32;
 
         let font = if let Some(font) = self.font {
             font
@@ -498,16 +493,16 @@ impl Widget for HashLabel<'_> {
                 Point::new(0, 0),
                 MonoTextStyle::new(&font, ui.style().text_color),
             );
-            let ellipsis_width = ellipsis.bounding_box().size.width;
+            ellipsis_width = ellipsis.bounding_box().size.width;
             let mut is_too_big = true;
             let target_width = ui.space_available().width - ellipsis_width;
             while is_too_big {
                 if text.text.len() > 4 {
                     // one UTF8 character can be up to 4 bytes
-                    text.text.get(..text.text.len() - 2).unwrap_or(""); // trim one byte off the end
-                                                                                     // keep trimming one byte off until the prev char boundary
+                    text.text = text.text.get(..text.text.len() - 2).unwrap_or(""); // trim one byte off the end
+                                                                                    // keep trimming one byte off until the prev char boundary
                     while !text.text.is_char_boundary(text.text.len()) {
-                        text.text.get(..text.text.len() - 2).unwrap_or("");
+                        text.text = text.text.get(..text.text.len() - 2).unwrap_or("");
                     }
                     // once str floor_char_boundary issue 93483 is merged replace the above with the following line
                     //let new_len = self.text.floor_char_boundary(self.text.len() * (ui.space_available().width / size.size.width) as usize - 1);
@@ -519,6 +514,8 @@ impl Widget for HashLabel<'_> {
             }
         }
         size = text.bounding_box();
+        let ellipsis_x_pos = size.size.width as i32;
+        size.size.width += ellipsis_width;
 
         // allocate space
 
@@ -551,33 +548,22 @@ impl Widget for HashLabel<'_> {
             ui.draw(&text)
                 .map_err(|_| GuiError::DrawError(Some("Couldn't draw text")))?;
 
-            ui.finalize()?;
-
             if is_ellipsis {
                 let mut ellipsis = Text::new(
                     "...",
                     Point::new(
-                        text.bounding_box().size.width as i32,
+                        ellipsis_x_pos,
                         text.bounding_box().bottom_right().unwrap().y,
                     ),
                     MonoTextStyle::new(&font, ui.style().text_color),
                 );
                 ellipsis.text_style.baseline = Baseline::Bottom;
-                let iresponse = ui.allocate_space(Size::new(
-                    ellipsis.bounding_box().size.width,
-                    ellipsis.bounding_box().size.height,
-                ))?;
-
-                ui.start_drawing(&iresponse.area);
-                // clear background if necessary
-                if !ui.cleared() {
-                    ui.clear_area(iresponse.area)?;
-                }
+                ellipsis.text_style.alignment = Alignment::Left;
 
                 ui.draw(&ellipsis)
                     .map_err(|_| GuiError::DrawError(Some("Couldn't draw ellipsis")))?;
-                ui.finalize()?;
             }
+            ui.finalize()?;
         }
 
         Ok(Response::new(iresponse))
