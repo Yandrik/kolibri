@@ -185,39 +185,53 @@ impl Widget for ToggleButton<'_> {
         // Determine widget style
         let style = match (*self.active, iresponse.interaction) {
             (true, Interaction::Click(_) | Interaction::Drag(_) | Interaction::Release(_)) => {
+                self.smartstate.modify(|s| s.set_state_hashed(&[3, self.min_width.unwrap_or(u32::MAX), 1]));
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
                     .fill_color(ui.style().primary_color)
                     .build()
             }
-            (true, Interaction::Hover(_)) => PrimitiveStyleBuilder::new()
-                .stroke_color(ui.style().highlight_border_color)
-                .stroke_width(ui.style().highlight_border_width)
-                .fill_color(ui.style().primary_color)
-                .build(),
-            (true, _) => PrimitiveStyleBuilder::new()
-                .stroke_color(ui.style().border_color)
-                .stroke_width(ui.style().border_width)
-                .fill_color(ui.style().primary_color)
-                .build(),
+            (true, Interaction::Hover(_)) => {
+                self.smartstate.modify(|s| s.set_state_hashed(&[2, self.min_width.unwrap_or(u32::MAX), 1]));
+                PrimitiveStyleBuilder::new()
+                    .stroke_color(ui.style().highlight_border_color)
+                    .stroke_width(ui.style().highlight_border_width)
+                    .fill_color(ui.style().primary_color)
+                    .build()
+            }
+            (true, _) => {
+                self.smartstate.modify(|s| s.set_state_hashed(&[1, self.min_width.unwrap_or(u32::MAX), 1]));
+                PrimitiveStyleBuilder::new()
+                    .stroke_color(ui.style().border_color)
+                    .stroke_width(ui.style().border_width)
+                    .fill_color(ui.style().primary_color)
+                    .build()
+            }
             (false, Interaction::Click(_) | Interaction::Drag(_) | Interaction::Release(_)) => {
+                self.smartstate.modify(|s| s.set_state_hashed(&[3, self.min_width.unwrap_or(u32::MAX), 0]));
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
                     .fill_color(ui.style().primary_color)
                     .build()
             }
-            (false, Interaction::Hover(_)) => PrimitiveStyleBuilder::new()
-                .stroke_color(ui.style().highlight_border_color)
-                .stroke_width(ui.style().highlight_border_width)
-                .fill_color(ui.style().highlight_item_background_color)
-                .build(),
-            (false, _) => PrimitiveStyleBuilder::new()
-                .stroke_color(ui.style().border_color)
-                .stroke_width(ui.style().border_width)
-                .fill_color(ui.style().item_background_color)
-                .build(),
+            (false, Interaction::Hover(_)) => {
+                self.smartstate.modify(|s| s.set_state_hashed(&[2, self.min_width.unwrap_or(u32::MAX), 0]));
+                PrimitiveStyleBuilder::new()
+                    .stroke_color(ui.style().highlight_border_color)
+                    .stroke_width(ui.style().highlight_border_width)
+                    .fill_color(ui.style().highlight_item_background_color)
+                    .build()
+            }
+            (false, _) => {
+                self.smartstate.modify(|s| s.set_state_hashed(&[1, self.min_width.unwrap_or(u32::MAX), 0]));
+                PrimitiveStyleBuilder::new()
+                    .stroke_color(ui.style().border_color)
+                    .stroke_width(ui.style().border_width)
+                    .fill_color(ui.style().item_background_color)
+                    .build()
+            }
         };
 
         let redraw = !self.smartstate.eq_option(&prevstate) || changed;
