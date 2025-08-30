@@ -169,10 +169,11 @@ impl Widget for Button<'_> {
 
         // styles and smartstate
         let prevstate = self.smartstate.clone_inner();
-        
+
         let rect_style = match iresponse.interaction {
             Interaction::None => {
-                self.smartstate.modify(|s| s.set_state_hashed(&[1, self.min_width.unwrap_or(u32::MAX)]));
+                self.smartstate
+                    .modify(|s| s.set_state_hashed(&[1, self.min_width.unwrap_or(u32::MAX)]));
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().border_color)
                     .stroke_width(ui.style().border_width)
@@ -180,7 +181,8 @@ impl Widget for Button<'_> {
                     .build()
             }
             Interaction::Hover(_) => {
-                self.smartstate.modify(|s| s.set_state_hashed(&[2, self.min_width.unwrap_or(u32::MAX)]));
+                self.smartstate
+                    .modify(|s| s.set_state_hashed(&[2, self.min_width.unwrap_or(u32::MAX)]));
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
@@ -188,13 +190,14 @@ impl Widget for Button<'_> {
                     .build()
             }
             _ => {
-                self.smartstate.modify(|s| s.set_state_hashed(&[3, self.min_width.unwrap_or(u32::MAX)]));
+                self.smartstate
+                    .modify(|s| s.set_state_hashed(&[3, self.min_width.unwrap_or(u32::MAX)]));
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
                     .fill_color(ui.style().primary_color)
                     .build()
-            },
+            }
         };
 
         if !self.smartstate.eq_option(&prevstate) {

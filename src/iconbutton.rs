@@ -338,7 +338,8 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
 
         let rect_style = match iresponse.interaction {
             Interaction::None => {
-                self.smartstate.modify(|s| s.set_state_hashed(&[1, self.min_width.unwrap_or(u32::MAX)]));
+                self.smartstate
+                    .modify(|s| s.set_state_hashed(&[1, self.min_width.unwrap_or(u32::MAX)]));
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().border_color)
                     .stroke_width(ui.style().border_width)
@@ -346,7 +347,8 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
                     .build()
             }
             Interaction::Hover(_) => {
-                self.smartstate.modify(|s| s.set_state_hashed(&[2, self.min_width.unwrap_or(u32::MAX)]));
+                self.smartstate
+                    .modify(|s| s.set_state_hashed(&[2, self.min_width.unwrap_or(u32::MAX)]));
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
@@ -355,7 +357,8 @@ impl<ICON: IconoirIcon> Widget for IconButton<'_, ICON> {
             }
 
             _ => {
-                self.smartstate.modify(|s| s.set_state_hashed(&[3, self.min_width.unwrap_or(u32::MAX)]));
+                self.smartstate
+                    .modify(|s| s.set_state_hashed(&[3, self.min_width.unwrap_or(u32::MAX)]));
                 PrimitiveStyleBuilder::new()
                     .stroke_color(ui.style().highlight_border_color)
                     .stroke_width(ui.style().highlight_border_width)
