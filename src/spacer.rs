@@ -49,18 +49,31 @@
 //! with the layout system to reserve space where nothing will be drawn.
 //!
 
-use crate::ui::{GuiResult, Response, Ui, Widget};
+use crate::ui::{GuiError, GuiResult, Response, Ui, Widget};
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::Size;
 use embedded_graphics::pixelcolor::PixelColor;
 
+enum SpacerType {
+    Fixed(Size),
+    RightBound(u32),
+}
+
 pub struct Spacer {
-    space: Size,
+    space: SpacerType,
 }
 
 impl Spacer {
     pub fn new(space: Size) -> Spacer {
-        Spacer { space }
+        Spacer {
+            space: SpacerType::Fixed(space),
+        }
+    }
+
+    pub fn new_with_right_bound(right_bound: u32) -> Spacer {
+        Spacer {
+            space: SpacerType::RightBound(right_bound),
+        }
     }
 }
 
@@ -70,7 +83,19 @@ impl Widget for Spacer {
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
         // allocate space
-        let space = ui.allocate_space(self.space)?;
+        let size = match self.space {
+            SpacerType::Fixed(space) => space,
+            SpacerType::RightBound(right_bound) => {
+                let pos_x = ui.get_screen_width() - ui.space_available().width;
+                if pos_x <= right_bound {
+                    Size::new(right_bound - pos_x, ui.get_row_height())
+                } else {
+                    return Err(GuiError::NoSpaceLeft);
+                }
+            }
+        };
+
+        let space = ui.allocate_space(size)?;
 
         Ok(Response::new(space))
     }
