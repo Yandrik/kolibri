@@ -44,7 +44,6 @@ use crate::ui::{GuiError, GuiResult, Response, Ui, Widget};
 use core::hash::BuildHasher;
 use core::hash::Hash;
 use core::ops::Add;
-use core::u32;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::mono_font::MonoFont;
@@ -543,7 +542,7 @@ fn measure_string_width<Color: PixelColor>(text: &str, font: MonoTextStyle<'_, C
 }
 
 /// Truncates a string by removing the specified number of characters from the end.
-fn truncate_string_by<'a>(text: &'a str, num_chars: usize) -> Option<&'a str> {
+fn truncate_string_by(text: &str, num_chars: usize) -> Option<&str> {
     if let Some((idx, _char)) = text.char_indices().nth_back(num_chars) {
         Some(&text[..idx])
     } else {

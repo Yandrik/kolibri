@@ -46,19 +46,19 @@ fn main() -> Result<(), core::convert::Infallible> {
         smartstates.restart_counter();
         let short = "A short label";
         let long = "A label that is far too long to fit the width of the display";
-        ui.add(Label::new(&short));
-        ui.add(Label::new(&long));
-        ui.add(HashLabel::new(&long, smartstates.nxt(), &hasher).auto_truncate());
-        ui.add(Label::new(&short));
-        ui.add(Label::new(&long).auto_truncate());
+        ui.add(Label::new(short));
+        ui.add(Label::new(long));
+        ui.add(HashLabel::new(long, smartstates.nxt(), &hasher).auto_truncate());
+        ui.add(Label::new(short));
+        ui.add(Label::new(long).auto_truncate());
         if additional == 0 {
             ui.clear_row().unwrap();
         }
         ui.add_horizontal(Spacer::new(Size::new(0, 20)));
-        ui.add(Label::new(&long).auto_truncate_to(150 + additional));
-        ui.add(Slider::new(&mut (additional.clone() as i16), 0..=150).width(150 + additional));
+        ui.add(Label::new(long).auto_truncate_to(150 + additional));
+        ui.add(Slider::new(&mut (additional as i16), 0..=150).width(150 + additional));
         additional = (additional + 1) % 150;
-        ui.add(Label::new(&short));
+        ui.add(Label::new(short));
 
         window.update(&display);
 

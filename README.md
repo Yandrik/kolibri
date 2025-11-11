@@ -298,9 +298,9 @@ if you have any questions.
 - [ ] simulator (not yet scheduled, mostly an idea for now)
   - [ ] e-g web simulator based examples
   - [ ] e-g web simulator based playground
-    - [ ] select lines to ignore (rationale: paste embedded code, ignore all lines that call to the software, 
-          and see & develop the GUI in the browser, then copy the code back to the embedded application 
-          *without deleting lines*)
+    - [ ] select lines to ignore (rationale: paste embedded code, ignore all lines that call to the software,
+      and see & develop the GUI in the browser, then copy the code back to the embedded application
+      *without deleting lines*)
     - [ ] super-fast live reload
 
 **Something missing?** Add an issue with the features you believe would be good.
@@ -308,8 +308,8 @@ if you have any questions.
 
 ### Expected Breaking Changes
 
-- `SmartstateProvider` might be integrated into the GUI, 
-       which would remove the need for the `smartstate` method on widgets.
+- `SmartstateProvider` might be integrated into the GUI,
+  which would remove the need for the `smartstate` method on widgets.
 - sub_ui methods (e.g. `ui.sub_ui()`, or `ui.right_panel()`) callbacks will change their signature from
   `(&mut UI) -> GuiResult<()>` to `(&mut UI) -> ()` to make Kolibri more ergonomic.
   > Expected API changes:
