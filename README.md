@@ -277,7 +277,8 @@ if you have any questions.
     - [ ] virtual mouse cursor (e.g. for joystick-interaction non-touchscreens)
     - [ ] position getter / force-interactor for e.g. encoder input
     - [ ] custom gestures
-      - near-impossible without a kind of gesture manager struct. 
+      - near-impossible without a kind of gesture manager struct.
+
         Probably better for a separate crate.
 
 
@@ -299,8 +300,10 @@ if you have any questions.
   - [ ] e-g web simulator based examples
   - [ ] e-g web simulator based playground
     - [ ] select lines to ignore (rationale: paste embedded code, ignore all lines that call to the software,
-      and see & develop the GUI in the browser, then copy the code back to the embedded application
-      *without deleting lines*)
+
+        and see & develop the GUI in the browser, then copy the code back to the embedded application
+
+        *without deleting lines*)
     - [ ] super-fast live reload
 
 **Something missing?** Add an issue with the features you believe would be good.
