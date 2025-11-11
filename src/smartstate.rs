@@ -1,3 +1,8 @@
+use core::hash::BuildHasher;
+use core::hash::Hash;
+
+use foldhash::fast::FixedState;
+
 /// A container for an optional mutable reference to a value.
 ///
 /// This container is primarily used with [`Smartstate`] to manage widget state and redraw behavior.
@@ -93,6 +98,9 @@ impl<T: PartialEq> Container<'_, T> {
         }
     }
 }
+
+/// Hasher for hashed smartstates.
+const HASH_STATE: FixedState = FixedState::with_seed(0x3094572067945102 /* random number */);
 
 #[derive(Clone, Copy, Debug)]
 /// Smartstates are used to dynamically redraw widgets. By doing so, there's no need to redraw
@@ -213,6 +221,12 @@ impl Smartstate {
         self.1 = true;
     }
 
+    /// Sets the current state ID based on a hash of the provided value.
+    pub fn set_state_hashed<T: Hash + ?Sized>(&mut self, to_hash: &T) {
+        self.0 = HASH_STATE.hash_one(to_hash) as u32;
+        self.1 = true;
+    }
+
     /// Returns true if this is an empty/invalid state.
     pub fn is_empty(&self) -> bool {
         !self.1
@@ -221,6 +235,11 @@ impl Smartstate {
     /// Returns true if this matches the given state ID and is valid.
     pub fn is_state(&self, state: u32) -> bool {
         self.1 && self.0 == state
+    }
+
+    /// Returns true if this matches the given state ID and is valid, using a hash.
+    pub fn is_state_hashed<T: Hash + ?Sized>(&self, to_hash: &T) -> bool {
+        self.1 && self.0 == HASH_STATE.hash_one(to_hash) as u32
     }
 
     /// Forces a redraw by invalidating the current state.
@@ -425,5 +444,343 @@ impl<const N: usize> SmartstateProvider<N> {
 impl<const N: usize> Default for SmartstateProvider<N> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Container tests
+    #[test]
+    fn test_container_empty() {
+        let container: Container<i32> = Container::empty();
+        assert!(container.optional_something.is_none());
+    }
+
+    #[test]
+    fn test_container_new() {
+        let mut value = 5;
+        let container = Container::new(&mut value);
+        assert!(container.optional_something.is_some());
+        assert_eq!(*container.optional_something.unwrap(), 5);
+    }
+
+    #[test]
+    fn test_container_set() {
+        let mut container: Container<i32> = Container::empty();
+        let mut value = 10;
+        container.set(&mut value);
+        assert!(container.optional_something.is_some());
+        assert_eq!(*container.optional_something.unwrap(), 10);
+    }
+
+    #[test]
+    fn test_container_modify() {
+        let mut value = 5;
+        let mut container = Container::new(&mut value);
+        container.modify(|v| *v = 7);
+        assert_eq!(*container.optional_something.unwrap(), 7);
+        assert_eq!(value, 7);
+    }
+
+    #[test]
+    fn test_container_clone_inner() {
+        let mut value = 5;
+        let container = Container::new(&mut value);
+        assert_eq!(container.clone_inner(), Some(5));
+
+        let empty_container: Container<i32> = Container::empty();
+        assert_eq!(empty_container.clone_inner(), None);
+    }
+
+    #[test]
+    fn test_container_eq_inner() {
+        let mut value = 5;
+        let container = Container::new(&mut value);
+        assert!(container.eq_inner(&5));
+        assert!(!container.eq_inner(&6));
+
+        let empty_container: Container<i32> = Container::empty();
+        assert!(!empty_container.eq_inner(&5));
+    }
+
+    #[test]
+    fn test_container_eq_option() {
+        let mut value = 5;
+        let container = Container::new(&mut value);
+        assert!(container.eq_option(&Some(5)));
+        assert!(!container.eq_option(&Some(6)));
+        assert!(!container.eq_option(&None));
+
+        let empty_container: Container<i32> = Container::empty();
+        assert!(!empty_container.eq_option(&Some(5)));
+        assert!(!empty_container.eq_option(&None));
+    }
+
+    // Smartstate tests
+    #[test]
+    fn test_smartstate_empty() {
+        let state = Smartstate::empty();
+        assert!(state.is_empty());
+        assert!(!state.1);
+    }
+
+    #[test]
+    fn test_smartstate_state() {
+        let state = Smartstate::state(42);
+        assert!(!state.is_empty());
+        assert!(state.is_state(42));
+        assert!(!state.is_state(43));
+    }
+
+    #[test]
+    fn test_smartstate_set_state() {
+        let mut state = Smartstate::empty();
+        state.set_state(42);
+        assert!(!state.is_empty());
+        assert!(state.is_state(42));
+    }
+
+    #[test]
+    fn test_smartstate_set_state_hashed() {
+        let mut state = Smartstate::empty();
+        let value = "test";
+        state.set_state_hashed(&value);
+        assert!(!state.is_empty());
+        assert!(state.is_state_hashed(&value));
+        assert!(!state.is_state_hashed(&"other"));
+    }
+
+    #[test]
+    fn test_smartstate_force_redraw() {
+        let mut state = Smartstate::state(42);
+        assert!(!state.is_empty());
+        state.force_redraw();
+        assert!(state.is_empty());
+    }
+
+    #[test]
+    fn test_smartstate_eq() {
+        let state1 = Smartstate::state(42);
+        let state2 = Smartstate::state(42);
+        let state3 = Smartstate::state(43);
+        let empty_state = Smartstate::empty();
+        let mut state4 = Smartstate::state(42);
+        state4.force_redraw();
+
+        assert_eq!(state1, state2);
+        assert_ne!(state1, state3);
+        assert_ne!(state1, empty_state);
+        assert_ne!(state1, state4);
+    }
+
+    // SmartstateProvider tests
+    #[test]
+    fn test_provider_new_and_default() {
+        let provider_new = SmartstateProvider::<10>::new();
+        let provider_default = SmartstateProvider::<10>::default();
+        assert_eq!(provider_new.size(), 10);
+        assert_eq!(provider_new.get_pos(), 0);
+        assert_eq!(provider_default.size(), 10);
+        assert_eq!(provider_default.get_pos(), 0);
+        for i in 0..10 {
+            assert!(provider_new.states[i].is_empty());
+            assert!(provider_default.states[i].is_empty());
+        }
+    }
+
+    #[test]
+    fn test_provider_restart_counter() {
+        let mut provider = SmartstateProvider::<5>::new();
+        provider.nxt();
+        provider.nxt();
+        assert_eq!(provider.get_pos(), 2);
+        provider.restart_counter();
+        assert_eq!(provider.get_pos(), 0);
+    }
+
+    #[test]
+    fn test_provider_nxt_and_pos() {
+        let mut provider = SmartstateProvider::<3>::new();
+        assert_eq!(provider.get_pos(), 0);
+        provider.nxt();
+        assert_eq!(provider.get_pos(), 1);
+        provider.nxt();
+        assert_eq!(provider.get_pos(), 2);
+        provider.nxt();
+        assert_eq!(provider.get_pos(), 3);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_provider_nxt_panic() {
+        let mut provider = SmartstateProvider::<1>::new();
+        provider.nxt();
+        provider.nxt(); // This should panic
+    }
+
+    #[test]
+    fn test_provider_current() {
+        let mut provider = SmartstateProvider::<5>::new();
+        provider.nxt().set_state(1);
+        assert!(provider.current().is_state(1));
+        provider.nxt().set_state(2);
+        assert!(provider.current().is_state(2));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_provider_current_panic() {
+        let mut provider = SmartstateProvider::<1>::new();
+        provider.current(); // This should panic
+    }
+
+    #[test]
+    fn test_provider_prev() {
+        let mut provider = SmartstateProvider::<5>::new();
+        provider.nxt().set_state(1);
+        provider.nxt().set_state(2);
+        assert!(provider.prev().is_state(1));
+        provider.nxt().set_state(3);
+        assert!(provider.prev().is_state(2));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_provider_prev_panic() {
+        let mut provider = SmartstateProvider::<2>::new();
+        provider.nxt();
+        provider.prev(); // This should panic
+    }
+
+    #[test]
+    fn test_provider_peek() {
+        let mut provider = SmartstateProvider::<5>::new();
+        provider.peek().set_state(100);
+        assert_eq!(provider.get_pos(), 0);
+        assert!(provider.states[0].is_state(100));
+        assert!(provider.peek().is_state(100));
+    }
+
+    #[test]
+    fn test_provider_get_relative() {
+        let mut provider = SmartstateProvider::<5>::new();
+        provider.nxt(); // pos = 1
+        provider.nxt(); // pos = 2
+        provider.get_relative(0).set_state(10); // at pos 2
+        provider.get_relative(-1).set_state(11); // at pos 1
+        provider.get_relative(-2).set_state(12); // at pos 0
+        assert!(provider.states[2].is_state(10));
+        assert!(provider.states[1].is_state(11));
+        assert!(provider.states[0].is_state(12));
+    }
+
+    #[test]
+    fn test_provider_skip() {
+        let mut provider = SmartstateProvider::<5>::new();
+        provider.skip(2);
+        assert_eq!(provider.get_pos(), 2);
+        provider.skip_one();
+        assert_eq!(provider.get_pos(), 3);
+    }
+
+    #[test]
+    fn test_provider_get() {
+        let mut provider = SmartstateProvider::<5>::new();
+        provider.get(3).set_state(99);
+        assert!(provider.states[3].is_state(99));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_provider_get_panic() {
+        let mut provider = SmartstateProvider::<5>::new();
+        provider.get(5); // should panic
+    }
+
+    #[test]
+    fn test_provider_force_redraw_all() {
+        let mut provider = SmartstateProvider::<5>::new();
+        for i in 0..5 {
+            provider.states[i].set_state(i as u32);
+        }
+        provider.force_redraw_all();
+        for i in 0..5 {
+            assert!(provider.states[i].is_empty());
+        }
+    }
+
+    #[test]
+    fn test_provider_force_redraw_remaining() {
+        let mut provider = SmartstateProvider::<5>::new();
+        for i in 0..5 {
+            provider.states[i].set_state(i as u32);
+        }
+        provider.pos = 2;
+        provider.force_redraw_remaining();
+        assert!(!provider.states[0].is_empty());
+        assert!(!provider.states[1].is_empty());
+        assert!(provider.states[2].is_empty());
+        assert!(provider.states[3].is_empty());
+        assert!(provider.states[4].is_empty());
+    }
+
+    #[test]
+    fn test_provider_force_redraw_from_offset() {
+        let mut provider = SmartstateProvider::<5>::new();
+        for i in 0..5 {
+            provider.states[i].set_state(i as u32);
+        }
+        provider.pos = 1;
+        provider.force_redraw_from_offset(2); // from pos 1+2=3
+        assert!(!provider.states[0].is_empty());
+        assert!(!provider.states[1].is_empty());
+        assert!(!provider.states[2].is_empty());
+        assert!(provider.states[3].is_empty());
+        assert!(provider.states[4].is_empty());
+    }
+
+    #[test]
+    fn test_provider_force_redraw_from() {
+        let mut provider = SmartstateProvider::<5>::new();
+        for i in 0..5 {
+            provider.states[i].set_state(i as u32);
+        }
+        provider.force_redraw_from(3);
+        assert!(!provider.states[0].is_empty());
+        assert!(!provider.states[1].is_empty());
+        assert!(!provider.states[2].is_empty());
+        assert!(provider.states[3].is_empty());
+        assert!(provider.states[4].is_empty());
+    }
+
+    #[test]
+    fn test_provider_force_redraw_range() {
+        let mut provider = SmartstateProvider::<5>::new();
+        for i in 0..5 {
+            provider.states[i].set_state(i as u32);
+        }
+        provider.force_redraw_range(1..=3);
+        assert!(!provider.states[0].is_empty());
+        assert!(provider.states[1].is_empty());
+        assert!(provider.states[2].is_empty());
+        assert!(provider.states[3].is_empty());
+        assert!(!provider.states[4].is_empty());
+    }
+
+    #[test]
+    fn test_provider_force_redraw_range_relative() {
+        let mut provider = SmartstateProvider::<5>::new();
+        for i in 0..5 {
+            provider.states[i].set_state(i as u32);
+        }
+        provider.pos = 1;
+        provider.force_redraw_range_relative(1..=2); // pos 2 and 3
+        assert!(!provider.states[0].is_empty());
+        assert!(!provider.states[1].is_empty());
+        assert!(provider.states[2].is_empty());
+        assert!(provider.states[3].is_empty());
+        assert!(!provider.states[4].is_empty());
     }
 }

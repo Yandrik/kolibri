@@ -92,6 +92,7 @@ pub fn medsize_rgb565_debug_style() -> Style<Rgb565> {
             default_padding: Size::new(3, 3),
             window_border_padding: Size::new(3, 3),
         },
+        corner_radius: 8,
     }
 }
 
@@ -115,10 +116,11 @@ pub fn medsize_rgb565_style() -> Style<Rgb565> {
         default_font: mono_font::iso_8859_10::FONT_9X15,
         spacing: Spacing {
             item_spacing: Size::new(8, 4),
-            button_padding: Size::new(5, 5),
+            button_padding: Size::new(6, 5),
             default_padding: Size::new(1, 1),
             window_border_padding: Size::new(3, 3),
         },
+        corner_radius: 8,
     }
 }
 
@@ -142,10 +144,11 @@ pub fn medsize_light_rgb565_style() -> Style<Rgb565> {
         default_font: mono_font::iso_8859_10::FONT_9X15,
         spacing: Spacing {
             item_spacing: Size::new(8, 4),
-            button_padding: Size::new(5, 5),
+            button_padding: Size::new(6, 5),
             default_padding: Size::new(1, 1),
             window_border_padding: Size::new(3, 3),
         },
+        corner_radius: 8,
     }
 }
 
@@ -169,10 +172,11 @@ pub fn medsize_sakura_rgb565_style() -> Style<Rgb565> {
         default_font: mono_font::ascii::FONT_9X15,
         spacing: Spacing {
             item_spacing: Size::new(8, 4),
-            button_padding: Size::new(5, 5),
+            button_padding: Size::new(6, 5),
             default_padding: Size::new(1, 1),
             window_border_padding: Size::new(3, 3),
         },
+        corner_radius: 8,
     }
 }
 
@@ -196,10 +200,11 @@ pub fn medsize_blue_rgb565_style() -> Style<Rgb565> {
         default_font: mono_font::iso_8859_10::FONT_9X15,
         spacing: Spacing {
             item_spacing: Size::new(8, 4),
-            button_padding: Size::new(5, 5),
+            button_padding: Size::new(6, 5),
             default_padding: Size::new(1, 1),
             window_border_padding: Size::new(3, 3),
         },
+        corner_radius: 8,
     }
 }
 
@@ -227,6 +232,7 @@ pub fn medsize_crt_rgb565_style() -> Style<Rgb565> {
             default_padding: Size::new(1, 1),
             window_border_padding: Size::new(3, 3),
         },
+        corner_radius: 0,
     }
 }
 
@@ -254,6 +260,7 @@ pub fn medsize_retro_rgb565_style() -> Style<Rgb565> {
             default_padding: Size::new(1, 1),
             window_border_padding: Size::new(3, 3),
         },
+        corner_radius: 0,
     }
 }
 
@@ -292,6 +299,7 @@ pub fn medsize_retro_rgb565_style() -> Style<Rgb565> {
 ///     highlight_border_width: 2,
 ///     highlight_item_background_color: Rgb565::BLUE,
 ///     item_background_color: Rgb565::BLACK,
+///     corner_radius: 8,
 /// };
 /// ```
 #[derive(Debug, Clone, Copy)]
@@ -302,7 +310,7 @@ pub struct Style<COL: PixelColor> {
     pub border_color: COL,
     /// Primary accent color for interactive elements
     pub primary_color: COL,
-    /// Secondary accent color for additional highlighting
+    /// Secondary accent color for additional highlighting;
     pub secondary_color: COL,
     /// Color used for icons
     pub icon_color: COL,
@@ -324,4 +332,6 @@ pub struct Style<COL: PixelColor> {
     pub highlight_border_width: u32,
     /// Color used for text
     pub text_color: COL,
+    /// Corner radius for rounded corners on widgets
+    pub corner_radius: u32,
 }

@@ -11,7 +11,7 @@ use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
+use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle, RoundedRectangle};
 use embedded_graphics::text::{Baseline, Text};
 
 /// # Button Widget
@@ -79,6 +79,7 @@ use embedded_graphics::text::{Baseline, Text};
 pub struct Button<'a> {
     label: &'a str,
     smartstate: Container<'a, Smartstate>,
+    corner_radius: Option<u32>,
 }
 
 impl<'a> Button<'a> {
@@ -93,6 +94,7 @@ impl<'a> Button<'a> {
         Button {
             label,
             smartstate: Container::empty(),
+            corner_radius: None,
         }
     }
 
@@ -108,6 +110,20 @@ impl<'a> Button<'a> {
     /// Self with smartstate configured
     pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
         self.smartstate.set(smartstate);
+        self
+    }
+
+    /// Sets a custom corner radius for the button.
+    ///
+    /// If not specified, the button will use the corner radius from the UI style.
+    ///
+    /// # Arguments
+    /// * `radius` - The corner radius in pixels
+    ///
+    /// # Returns
+    /// Self with the specified corner radius
+    pub fn with_radius(mut self, radius: u32) -> Self {
+        self.corner_radius = Some(radius);
         self
     }
 }
@@ -189,11 +205,13 @@ impl Widget for Button<'_> {
         if !self.smartstate.eq_option(&prevstate) {
             ui.start_drawing(&iresponse.area);
 
-            ui.draw(
-                &Rectangle::new(iresponse.area.top_left, iresponse.area.size)
-                    .into_styled(rect_style),
-            )
-            .ok();
+            let corner_radius = self.corner_radius.unwrap_or(ui.style().corner_radius);
+            let rounded_rect = RoundedRectangle::with_equal_corners(
+                Rectangle::new(iresponse.area.top_left, iresponse.area.size),
+                Size::new(corner_radius, corner_radius),
+            );
+
+            ui.draw(&rounded_rect.into_styled(rect_style)).ok();
             ui.draw(&text).ok();
 
             ui.finalize()?;

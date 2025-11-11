@@ -18,7 +18,7 @@ use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::image::Image;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle};
+use embedded_graphics::primitives::{PrimitiveStyleBuilder, Rectangle, RoundedRectangle};
 use embedded_iconoir::prelude::*;
 use embedded_iconoir::{size12px, size18px, size24px, size32px};
 
@@ -74,6 +74,7 @@ use embedded_iconoir::{size12px, size18px, size24px, size32px};
 pub struct Checkbox<'a> {
     checked: &'a mut bool,
     smartstate: Container<'a, Smartstate>,
+    corner_radius: Option<u32>,
 }
 
 impl<'a> Checkbox<'a> {
@@ -81,6 +82,7 @@ impl<'a> Checkbox<'a> {
         Checkbox {
             checked,
             smartstate: Container::empty(),
+            corner_radius: None,
         }
     }
 
@@ -93,6 +95,20 @@ impl<'a> Checkbox<'a> {
     /// or when minimizing power consumption is important.
     pub fn smartstate(mut self, smartstate: &'a mut Smartstate) -> Self {
         self.smartstate.set(smartstate);
+        self
+    }
+
+    /// Sets a custom corner radius for the checkbox.
+    ///
+    /// If not specified, the checkbox will use the corner radius from the UI style.
+    ///
+    /// # Arguments
+    /// * `radius` - The corner radius in pixels
+    ///
+    /// # Returns
+    /// Self with the specified corner radius
+    pub fn with_radius(mut self, radius: u32) -> Self {
+        self.corner_radius = Some(radius);
         self
     }
 }
@@ -190,9 +206,13 @@ impl Widget for Checkbox<'_> {
 
             // draw
 
-            let rect = Rectangle::new(iresponse.area.top_left, iresponse.area.size);
+            let corner_radius = self.corner_radius.unwrap_or(ui.style().corner_radius);
+            let rounded_rect = RoundedRectangle::with_equal_corners(
+                Rectangle::new(iresponse.area.top_left, iresponse.area.size),
+                Size::new(corner_radius, corner_radius),
+            );
 
-            ui.draw(&rect.into_styled(style.build()))
+            ui.draw(&rounded_rect.into_styled(style.build()))
                 .map_err(|_| GuiError::DrawError(Some("Couldn't draw Checkbox")))?;
 
             if *self.checked {
