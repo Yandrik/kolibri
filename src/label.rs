@@ -50,7 +50,8 @@ use embedded_graphics::mono_font::MonoFont;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::PixelColor;
 use embedded_graphics::prelude::*;
-use embedded_graphics::text::{Baseline, Text};
+use embedded_graphics::text::renderer::TextRenderer as _;
+use embedded_graphics::text::{Alignment, Baseline, Text};
 use foldhash::fast::RandomState;
 
 /// A widget for displaying text in the UI.
@@ -96,6 +97,8 @@ pub struct Label<'a> {
     text: &'a str,
     font: Option<MonoFont<'a>>,
     smartstate: Container<'a, Smartstate>,
+    /// Width to auto-truncate to (if too large, screen width is used)
+    auto_truncate_width: Option<u32>,
 }
 
 impl<'a> Label<'a> {
@@ -128,6 +131,7 @@ impl<'a> Label<'a> {
             text,
             font: None,
             smartstate: Container::empty(),
+            auto_truncate_width: None,
         }
     }
 
@@ -195,6 +199,16 @@ impl<'a> Label<'a> {
         self.smartstate.set(smartstate);
         self
     }
+
+    pub fn auto_truncate(self) -> Self {
+        self.auto_truncate_to(u32::MAX)
+    }
+
+    /// if the text is too long to fit within the available width calling this will reduce the length of the text and append an ellipsis (...)
+    pub fn auto_truncate_to(mut self, width: u32) -> Self {
+        self.auto_truncate_width = Some(width);
+        self
+    }
 }
 
 impl Widget for Label<'_> {
@@ -202,37 +216,44 @@ impl Widget for Label<'_> {
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
-        // get size
+        // get size of text
+        let font = self.font.unwrap_or(ui.style().default_font);
+        let text_style = MonoTextStyle::new(&font, ui.style().text_color);
+        let mut is_ellipsis = false;
+        let ellipsis_width = measure_string_width("...", text_style);
+        let mut text = self.text;
 
-        let font = if let Some(font) = self.font {
-            font
-        } else {
-            ui.style().default_font
-        };
+        if let Some(width) = self.auto_truncate_width {
+            let (truncated_text, ellipsis_needed) =
+                truncate_text_singleline(text, text_style, width.min(ui.space_available().width));
+            text = truncated_text;
+            is_ellipsis = ellipsis_needed;
+        }
 
         let mut text = Text::new(
-            self.text,
+            text,
             Point::new(0, 0),
             MonoTextStyle::new(&font, ui.style().text_color),
         );
 
-        let size = text.bounding_box();
+        let mut size = text.bounding_box();
 
+        if is_ellipsis {
+            size.size.width += ellipsis_width;
+        }
         // allocate space
-
         let iresponse = ui.allocate_space(Size::new(size.size.width, size.size.height))?;
 
-        // move text (center vertically)
+        // check smartstate (a bool would work, but this is consistent with other widgets)
+        let redraw = !self.smartstate.eq_option(&Some(Smartstate::state(0)));
+        self.smartstate.modify(|st| *st = Smartstate::state(0));
 
+        // move text (center vertically)
         text.translate_mut(iresponse.area.top_left.add(Point::new(
             0,
             (iresponse.area.size.height - size.size.height) as i32 / 2,
         )));
         text.text_style.baseline = Baseline::Top;
-
-        // check smartstate (a bool would work, but this is consistent with other widgets)
-        let redraw = !self.smartstate.eq_option(&Some(Smartstate::state(0)));
-        self.smartstate.modify(|st| *st = Smartstate::state(0));
 
         // draw
 
@@ -246,6 +267,18 @@ impl Widget for Label<'_> {
             ui.draw(&text)
                 .map_err(|_| GuiError::DrawError(Some("Couldn't draw text")))?;
 
+            if is_ellipsis {
+                let mut ellipsis = Text::new(
+                    "...",
+                    text.bounding_box().bottom_right().unwrap(),
+                    text_style,
+                );
+                ellipsis.text_style.baseline = Baseline::Bottom;
+                ellipsis.text_style.alignment = Alignment::Left;
+
+                ui.draw(&ellipsis)
+                    .map_err(|_| GuiError::DrawError(Some("Couldn't draw ellipsis")))?;
+            }
             ui.finalize()?;
         }
 
@@ -328,6 +361,8 @@ pub struct HashLabel<'a> {
     font: Option<MonoFont<'a>>,
     smartstate: Container<'a, Smartstate>,
     hasher: &'a Hasher,
+    /// Width to auto-truncate to (if too large, screen width is used)
+    auto_truncate_width: Option<u32>,
 }
 
 impl<'a> HashLabel<'a> {
@@ -370,6 +405,7 @@ impl<'a> HashLabel<'a> {
             font: None,
             smartstate: Container::new(smartstate),
             hasher,
+            auto_truncate_width: None,
         }
     }
 
@@ -405,6 +441,16 @@ impl<'a> HashLabel<'a> {
         self.font = Some(font);
         self
     }
+
+    pub fn auto_truncate(self) -> Self {
+        self.auto_truncate_to(u32::MAX)
+    }
+
+    /// if the text is too long to fit within the available width calling this will reduce the length of the text and append an ellipsis (...)
+    pub fn auto_truncate_to(mut self, width: u32) -> Self {
+        self.auto_truncate_width = Some(width);
+        self
+    }
 }
 
 impl Widget for HashLabel<'_> {
@@ -412,24 +458,32 @@ impl Widget for HashLabel<'_> {
         &mut self,
         ui: &mut Ui<DRAW, COL>,
     ) -> GuiResult<Response> {
-        // get size
+        // get size of text
+        let font = self.font.unwrap_or(ui.style().default_font);
+        let text_style = MonoTextStyle::new(&font, ui.style().text_color);
+        let mut is_ellipsis = false;
+        let ellipsis_width = measure_string_width("...", text_style);
+        let mut text = self.text;
 
-        let font = if let Some(font) = self.font {
-            font
-        } else {
-            ui.style().default_font
-        };
+        if let Some(width) = self.auto_truncate_width {
+            let (truncated_text, ellipsis_needed) =
+                truncate_text_singleline(text, text_style, width.min(ui.space_available().width));
+            text = truncated_text;
+            is_ellipsis = ellipsis_needed;
+        }
 
         let mut text = Text::new(
-            self.text,
+            text,
             Point::new(0, 0),
             MonoTextStyle::new(&font, ui.style().text_color),
         );
 
-        let size = text.bounding_box();
+        let mut size = text.bounding_box();
 
+        if is_ellipsis {
+            size.size.width += ellipsis_width;
+        }
         // allocate space
-
         let iresponse = ui.allocate_space(Size::new(size.size.width, size.size.height))?;
 
         let hash = self.hasher.hash(self.text) as u32;
@@ -437,19 +491,16 @@ impl Widget for HashLabel<'_> {
         let redraw = !self.smartstate.eq_option(&Some(Smartstate::state(hash)));
         self.smartstate.modify(|st| *st = Smartstate::state(hash));
 
+        // move text (center vertically)
+        text.translate_mut(iresponse.area.top_left.add(Point::new(
+            0,
+            (iresponse.area.size.height - size.size.height) as i32 / 2,
+        )));
+        text.text_style.baseline = Baseline::Top;
+
+        // draw
+
         if redraw {
-            // move text (center vertically)
-
-            text.translate_mut(iresponse.area.top_left.add(Point::new(
-                0,
-                (iresponse.area.size.height - size.size.height) as i32 / 2,
-            )));
-            text.text_style.baseline = Baseline::Top;
-
-            // check smartstate (a bool would work, but this is consistent with other widgets)
-
-            // draw
-
             ui.start_drawing(&iresponse.area);
             // clear background if necessary
             if !ui.cleared() {
@@ -459,9 +510,88 @@ impl Widget for HashLabel<'_> {
             ui.draw(&text)
                 .map_err(|_| GuiError::DrawError(Some("Couldn't draw text")))?;
 
+            if is_ellipsis {
+                let mut ellipsis = Text::new(
+                    "...",
+                    text.bounding_box().bottom_right().unwrap(),
+                    text_style,
+                );
+                ellipsis.text_style.baseline = Baseline::Bottom;
+                ellipsis.text_style.alignment = Alignment::Left;
+
+                ui.draw(&ellipsis)
+                    .map_err(|_| GuiError::DrawError(Some("Couldn't draw ellipsis")))?;
+            }
             ui.finalize()?;
         }
 
         Ok(Response::new(iresponse))
     }
+}
+
+/// Measures the width of a string using the specified font style.
+///
+/// # Arguments
+/// * `text` - The text to measure.
+/// * `font` - The font style that will be used for drawing the text.
+fn measure_string_width<Color: PixelColor>(text: &str, font: MonoTextStyle<'_, Color>) -> u32 {
+    font.measure_string(text, Point::zero(), Baseline::Top)
+        .bounding_box
+        .size
+        .width
+}
+
+/// Truncates a string by removing the specified number of characters from the end.
+fn truncate_string_by(text: &str, num_chars: usize) -> Option<&str> {
+    if let Some((idx, _char)) = text.char_indices().nth_back(num_chars) {
+        Some(&text[..idx])
+    } else {
+        None
+    }
+}
+
+/// Truncates text to fit within max_width once drawn, returning the truncated text and a flag indicating if an ellipsis is needed.
+///
+/// # Arguments
+///
+/// * `text` - The text to truncate.
+/// * `font` - The font style used for measuring text width.
+/// * `max_width` - The maximum allowed width for the text.
+///
+/// # Returns
+///
+/// A tuple containing the truncated text and a boolean indicating if an ellipsis should be drawn.
+/// This is true if:
+/// - Truncation has occurred.
+/// - The original text was longer than the truncated text.
+/// - The truncated text (at least 1 char of it) plus ellipsis fits within max_width. (otherwise the text is just cut off.)
+fn truncate_text_singleline<'a, Color: PixelColor>(
+    text: &'a str,
+    font: MonoTextStyle<'_, Color>,
+    max_width: u32,
+) -> (&'a str, bool) {
+    // Placeholder for text truncation logic
+    let mut text = text.lines().next().unwrap_or("");
+    let mut ellipsis_needed = false;
+    let mut width = measure_string_width(text, font);
+    if width > max_width {
+        let mut ellipsis_width = measure_string_width("...", font) + font.font.character_spacing;
+        ellipsis_needed = true;
+        if ellipsis_width + font.font.character_size.width > max_width {
+            // not enough space even for ellipsis
+            ellipsis_needed = false;
+            ellipsis_width = 0;
+        }
+
+        let per_char_width_estimate = font.font.character_size.width + font.font.character_spacing;
+        let chars_to_remove = (width - max_width - ellipsis_width) / per_char_width_estimate;
+        text = truncate_string_by(text, chars_to_remove as usize).unwrap_or("");
+        width = measure_string_width(text, font);
+        while width + ellipsis_width > max_width {
+            // keep trimming until it fits
+            text = truncate_string_by(text, 1).unwrap_or("");
+            width = measure_string_width(text, font);
+        }
+    }
+    (text, ellipsis_needed)
 }

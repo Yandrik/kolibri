@@ -68,7 +68,7 @@ fn main() -> Result<(), core::convert::Infallible> {
         if ui.add_horizontal(Button::new("-")).clicked() {
             i = i.saturating_sub(1);
         }
-        ui.add_horizontal(Label::new(format!("Clicked {} times", i).as_ref()));
+        ui.add_horizontal(Label::new(format!("Clicked {i} times").as_ref()));
         if ui.add_horizontal(Button::new("+")).clicked() {
             i = i.saturating_add(1);
         }
