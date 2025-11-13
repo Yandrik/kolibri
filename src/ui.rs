@@ -294,6 +294,7 @@ impl Placer {
         // set new position
         let item_pos = self.pos;
         self.pos = Point::new(right as i32, self.pos.y);
+        self.col += 1;
 
         Ok(Rectangle::new(
             item_pos,
@@ -525,6 +526,62 @@ impl Interaction {
     }
 }
 
+#[derive(Debug, Default, PartialEq)]
+enum PopupStage {
+    #[default]
+    Hide,
+    Drawing,
+    Show,
+}
+
+/// Represents the state of a popup widget.
+///
+/// The [PopupState] struct tracks the current stage of the popup widget, as well as its position and bounds.
+///
+/// # Fields
+///
+/// * `stage` - The current stage of the popup widget (hide, drawing, show)
+/// * `col` - The column index of the popup widget in the grid layout
+/// * `row` - The row index of the popup widget in the grid layout
+/// * `bounds` - The optional bounds of the popup widget, if it has been positioned
+///
+/// # Notice
+///
+/// - The [PopupState] parameter must be declared outside the UI loop to ensure that the popup widget's state is not lost when redraw the main UI.
+#[derive(Debug, Default)]
+pub struct PopupState {
+    stage: PopupStage,
+    col: u32,
+    row: u32,
+    bounds: Option<Rectangle>,
+}
+
+/// Struct that manages the state and interaction of a popup widget.
+///
+/// The [Popup] struct is responsible for tracking the state of a popup widget, such as its position, bounds, and interaction status.
+/// It is used internally by the framework to manage popup widgets and handle user interactions.
+///
+/// # Fields
+///
+/// * `state` - A mutable reference to the [PopupState] struct that tracks the popup widget's state
+/// * `buffer` - A mutable reference to the buffer used for rendering the popup widget
+/// * `interact` - The current interaction state of the popup widget (click, drag, release, hover, none)
+pub(crate) struct Popup<'a, COL: PixelColor> {
+    state: &'a mut PopupState,
+    buffer: &'a mut [COL],
+    interact: Interaction,
+}
+
+impl<'a, COL: PixelColor> Popup<'a, COL> {
+    pub fn new(state: &'a mut PopupState, buffer: &'a mut [COL]) -> Self {
+        Self {
+            state,
+            buffer,
+            interact: Interaction::None,
+        }
+    }
+}
+
 /// The main UI struct, responsible for managing the layout and rendering of the user interface.
 ///
 /// The [Ui] struct is the core of the Kolibri GUI framework. It manages the following:
@@ -565,6 +622,7 @@ where
     /// Whether the UI was background-cleared this frame
     cleared: bool,
     debug_color: Option<COL>,
+    popup: Option<Popup<'a, COL>>,
 }
 
 // -- Getter methods for [Ui] --
@@ -631,6 +689,29 @@ where
     pub fn get_screen_width(&self) -> u32 {
         self.bounds.size.width + self.style.spacing.window_border_padding.width * 2
     }
+
+    /// Return the position of the placer.
+    /// ## Returns
+    ///
+    /// The position of the placer as a [Point].
+    /// ## Example
+    ///
+    /// ```no_run
+    /// # use embedded_graphics::geometry::Size;
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// let pos = ui.get_pos();
+    /// println!("Placer position: {}", pos);
+    /// ```
+    pub fn get_placer_top_left(&self) -> Point {
+        self.placer.pos
+    }
 }
 
 // -- Construction and widget addition methods --
@@ -689,6 +770,7 @@ where
             interact: Interaction::None,
             cleared: false,
             debug_color: None,
+            popup: None,
         }
     }
 
@@ -1173,7 +1255,14 @@ where
         if self
             .interact
             .get_point()
-            .map(|pt| area.contains(pt))
+            .map(|pt| {
+                if let Some(popup) = &self.popup {
+                    if popup.state.stage == PopupStage::Show {
+                        return false;
+                    }
+                }
+                return area.contains(pt);
+            })
             .unwrap_or(false)
         {
             self.interact
@@ -1788,6 +1877,7 @@ where
                 placer,
                 cleared: false,
                 debug_color: self.debug_color,
+                popup: None,
             };
             (f)(&mut sub_ui)
         })?;
@@ -1838,6 +1928,7 @@ where
                 placer: self.placer.clone(),
                 cleared: false,
                 debug_color: self.debug_color,
+                popup: None,
             };
             let res = (f)(&mut sub_ui);
             self.placer = sub_ui.placer;
@@ -1961,6 +2052,163 @@ where
         );
 
         self.unchecked_sub_ui(area, f)
+    }
+}
+
+impl<'a, COL, DRAW> Ui<'a, DRAW, COL>
+where
+    DRAW: DrawTarget<Color = COL>,
+    COL: PixelColor,
+{
+    /// Begins a popup layer with the specified state and buffer.
+    ///
+    /// The popup layer is used to display interactive widgets that are temporarily shown on top of the main UI.
+    ///
+    /// ## Parameters
+    ///
+    /// - `state`: A mutable reference to the [PopupState] that controls the popup's behavior and appearance.
+    /// - `buffer`: A mutable reference to the buffer used to draw the popup's contents.
+    ///
+    /// # Notice
+    ///
+    /// - The `state` parameter must be declared outside the UI loop.
+    ///
+    /// # Example
+    ///
+    /// References [crate::combo_box::ComboBox] Example
+    ///
+    pub fn begin_popup(&mut self, state: &'a mut PopupState, buffer: &'a mut [COL]) {
+        self.popup = Some(Popup::new(state, buffer));
+    }
+
+    /// Ends the popup layer, draw the popup contents to main UI.
+    ///
+    /// This method should be called after all widgets have been drawed to main UI.
+    ///
+    /// # Example
+    ///
+    /// References [crate::combo_box::ComboBox] Example
+    ///
+    pub fn end_popup(&mut self) {
+        let Some(popup) = self.popup.as_mut() else {
+            return;
+        };
+
+        if popup.state.stage != PopupStage::Show {
+            return;
+        }
+
+        let Some(bounds) = popup.state.bounds else {
+            return;
+        };
+
+        if let Interaction::Click(pt) = popup.interact {
+            if !bounds.contains(pt) {
+                popup.state.stage = PopupStage::Hide;
+                return;
+            }
+        }
+
+        popup.interact = Interaction::None;
+        if let Some(framebuf) = WidgetFramebuf::try_new(popup.buffer, bounds.size, bounds.top_left)
+        {
+            framebuf.draw(self.painter.target).ok();
+        }
+    }
+
+    /// Checks if the popup layer should redraw.
+    ///
+    /// ## Returns
+    ///
+    /// `true` if the popup layer should redraw, `false` otherwise.
+    ///
+    /// # Example
+    ///
+    /// References [crate::combo_box::ComboBox] Example
+    ///
+    pub(crate) fn popup_check(&mut self) -> bool {
+        let Some(popup) = self.popup.as_mut() else {
+            return false;
+        };
+
+        if popup.state.stage == PopupStage::Show
+            && popup.state.col == self.placer.col
+            && popup.state.row == self.placer.row
+        {
+            popup.interact = self.interact;
+            self.interact = Interaction::None;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// Draws the popup layer with the specified contents.
+    ///
+    /// ## Parameters
+    ///
+    /// - `top_left`: The top-left position of the popup layer.
+    /// - `width`: The width of the popup layer.
+    /// - `popup_contents`: A closure that takes a mutable reference to the popup layer's UI and returns a boolean indicating whether the popup should be closed.
+    ///
+    /// ## Returns
+    ///
+    /// `Ok(true)` if the popup has handled and will close, `Ok(false)` otherwise.
+    ///
+    /// # Example
+    ///
+    /// References [crate::combo_box::ComboBox] Example
+    ///
+    pub(crate) fn popup_draw<F>(
+        &mut self,
+        top_left: Point,
+        width: u16,
+        popup_contents: F,
+    ) -> GuiResult<bool>
+    where
+        COL: PixelColor,
+        F: FnOnce(&mut Ui<WidgetFramebuf<COL>, COL>) -> bool,
+    {
+        if width == 0 {
+            return Err(GuiError::DrawError(None));
+        }
+
+        let Some(popup) = self.popup.as_mut() else {
+            return Err(GuiError::DrawError(Some("Popup layer not initialized")));
+        };
+
+        let mut bounds = Rectangle::new(
+            top_left,
+            Size::new(width as u32, popup.buffer.len() as u32 / width as u32),
+        );
+        let style = self.style;
+
+        if let Some(mut framebuf) =
+            WidgetFramebuf::try_new(popup.buffer, bounds.size, bounds.top_left)
+        {
+            let mut popup_ui = Ui::new(&mut framebuf, bounds, style);
+            if let Some(dbg_color) = self.debug_color {
+                popup_ui.draw_widget_bounds_debug(dbg_color);
+            }
+            popup_ui.interact = popup.interact;
+            popup.state.stage = PopupStage::Drawing;
+            popup_ui.begin_popup(popup.state, &mut []);
+            popup_ui.clear_background()?;
+            let selected = popup_contents(&mut popup_ui);
+            bounds.size.height = popup_ui.get_placer_top_left().y as u32
+                + popup_ui.style().spacing.window_border_padding.height;
+            if selected {
+                popup.state.stage = PopupStage::Hide;
+            } else {
+                popup.state.stage = PopupStage::Show;
+                popup.state.col = self.placer.col;
+                popup.state.row = self.placer.row;
+                popup.state.bounds = Some(bounds);
+            }
+            Ok(selected)
+        } else {
+            Err(GuiError::DrawError(Some("Popup buffer too small")))
+        }
     }
 }
 
