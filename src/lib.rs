@@ -5,6 +5,7 @@
 
 pub mod button;
 pub mod checkbox;
+pub mod combo_box;
 // mod icon;
 // pub mod icon;
 pub mod icon;

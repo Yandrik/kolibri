@@ -335,3 +335,19 @@ pub struct Style<COL: PixelColor> {
     /// Corner radius for rounded corners on widgets
     pub corner_radius: u32,
 }
+
+pub fn slice_text_by_width<'b, C: PixelColor>(
+    width: u32,
+    text: &'b str,
+    style: &Style<C>,
+) -> &'b str {
+    let font = &style.default_font;
+    let chars_count = ((width + font.character_spacing) / font.character_size.width
+        + font.character_spacing) as usize;
+
+    if chars_count < text.chars().count() {
+        &text[0..chars_count]
+    } else {
+        text
+    }
+}

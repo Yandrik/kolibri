@@ -80,6 +80,7 @@ pub struct Button<'a> {
     label: &'a str,
     smartstate: Container<'a, Smartstate>,
     corner_radius: Option<u32>,
+    width: u16,
 }
 
 impl<'a> Button<'a> {
@@ -95,6 +96,7 @@ impl<'a> Button<'a> {
             label,
             smartstate: Container::empty(),
             corner_radius: None,
+            width: 0,
         }
     }
 
@@ -126,6 +128,20 @@ impl<'a> Button<'a> {
         self.corner_radius = Some(radius);
         self
     }
+
+    /// Sets the width of the button.
+    ///
+    /// If not specified, the button will use the width from the UI style.
+    ///
+    /// # Arguments
+    /// * `width` - The width of the button in pixels
+    ///
+    /// # Returns
+    /// Self with the specified width
+    pub fn with_width(mut self, width: u16) -> Self {
+        self.width = width;
+        self
+    }
 }
 
 impl Widget for Button<'_> {
@@ -135,22 +151,33 @@ impl Widget for Button<'_> {
     ) -> GuiResult<Response> {
         // get size
         let font = ui.style().default_font;
+        let label = if self.width > 0 {
+            crate::style::slice_text_by_width(self.width as u32, self.label, ui.style())
+        } else {
+            self.label
+        };
 
         let mut text = Text::new(
-            self.label,
+            label,
             Point::new(0, 0),
             MonoTextStyle::new(&font, ui.style().text_color),
         );
 
         let height = ui.style().default_widget_height;
-        let size = text.bounding_box();
+        let text_size = text.bounding_box().size;
+        let size = Size::new(max(text_size.width, self.width as u32), text_size.height);
         let padding = ui.style().spacing.button_padding;
         let border = ui.style().border_width;
+        let width = if self.width > 0 {
+            self.width as u32
+        } else {
+            size.width + 2 * padding.width + 2 * border
+        };
 
         // allocate space
         let iresponse = ui.allocate_space(Size::new(
-            size.size.width + 2 * padding.width + 2 * border,
-            max(size.size.height + 2 * padding.height + 2 * border, height),
+            width,
+            max(size.height + 2 * padding.height + 2 * border, height),
         ))?;
 
         // move text
