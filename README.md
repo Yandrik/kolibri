@@ -271,13 +271,13 @@ if you have any questions.
   - [x] incremental redraws
 
 - [ ] input
-  - [x] generic input system (touch)
-  - [x] smartstate-reactive basic widgets
-  - [ ] virtual mouse cursor (e.g. for joystick-interaction non-touchscreens)
-  - [ ] position getter / force-interactor for e.g. encoder input
-  - [ ] custom gestures
-    - near-impossible without a kind of gesture manager struct.
-      Probably better for a separate crate.
+    - [x] generic input system (touch)
+    - [x] smartstate-reactive basic widgets
+    - [ ] virtual mouse cursor (e.g. for joystick-interaction non-touchscreens)
+    - [ ] position getter / force-interactor for e.g. encoder input
+    - [ ] custom gestures
+      - near-impossible without a kind of gesture manager struct. Probably better for a separate crate.
+
 
 - [ ] testing
   - [ ] unit tests for non-widget code
@@ -295,9 +295,7 @@ if you have any questions.
 - [ ] simulator (not yet scheduled, mostly an idea for now)
   - [ ] e-g web simulator based examples
   - [ ] e-g web simulator based playground
-    - [ ] select lines to ignore (rationale: paste embedded code, ignore all lines that call to the software,
-      and see & develop the GUI in the browser, then copy the code back to the embedded application
-      *without deleting lines*)
+    - [ ] select lines to ignore (rationale: paste embedded code, ignore all lines that call to the software, and see & develop the GUI in the browser, then copy the code back to the embedded application *without deleting lines*)
     - [ ] super-fast live reload
 
 **Something missing?** Add an issue with the features you believe would be good.
