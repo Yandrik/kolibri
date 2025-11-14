@@ -532,6 +532,7 @@ enum PopupStage {
     Hide,
     Drawing,
     Show,
+    Handled,
 }
 
 /// Represents the state of a popup widget.
@@ -2078,6 +2079,10 @@ where
     /// References [crate::combo_box::ComboBox] Example
     ///
     pub fn begin_popup(&mut self, state: &'a mut PopupState, buffer: &'a mut [COL]) {
+        if state.stage == PopupStage::Handled {
+            state.stage = PopupStage::Hide;
+            self.clear_background().ok();
+        }
         self.popup = Some(Popup::new(state, buffer));
     }
 
@@ -2089,14 +2094,13 @@ where
     ///
     /// References [crate::combo_box::ComboBox] Example
     ///
-    pub fn end_popup(&mut self) {
+    pub fn end_popup<F>(&mut self, popup_handled: F)
+    where 
+        F: FnOnce(),
+    {
         let Some(popup) = self.popup.as_mut() else {
             return;
         };
-
-        if popup.state.stage != PopupStage::Show {
-            return;
-        }
 
         let Some(bounds) = popup.state.bounds else {
             return;
@@ -2104,15 +2108,21 @@ where
 
         if let Interaction::Click(pt) = popup.interact {
             if !bounds.contains(pt) {
-                popup.state.stage = PopupStage::Hide;
-                return;
+                popup.state.stage = PopupStage::Handled;
             }
         }
 
         popup.interact = Interaction::None;
-        if let Some(framebuf) = WidgetFramebuf::try_new(popup.buffer, bounds.size, bounds.top_left)
-        {
-            framebuf.draw(self.painter.target).ok();
+        if popup.state.stage == PopupStage::Show {
+            if let Some(framebuf) =
+                WidgetFramebuf::try_new(popup.buffer, bounds.size, bounds.top_left)
+            {
+                framebuf.draw(self.painter.target).ok();
+            }
+        }
+
+        if popup.state.stage == PopupStage::Handled {
+            popup_handled();
         }
     }
 
@@ -2198,7 +2208,7 @@ where
             bounds.size.height = popup_ui.get_placer_top_left().y as u32
                 + popup_ui.style().spacing.window_border_padding.height;
             if selected {
-                popup.state.stage = PopupStage::Hide;
+                popup.state.stage = PopupStage::Handled;
             } else {
                 popup.state.stage = PopupStage::Show;
                 popup.state.col = self.placer.col;

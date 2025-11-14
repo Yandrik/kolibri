@@ -9,6 +9,7 @@ use embedded_graphics_simulator::{
 use kolibri_embedded_gui::checkbox::Checkbox;
 use kolibri_embedded_gui::combo_box::ComboBox;
 use kolibri_embedded_gui::label::Label;
+use kolibri_embedded_gui::smartstate::SmartstateProvider;
 use kolibri_embedded_gui::ui::{Interaction, PopupState, Ui};
 
 fn main() -> Result<(), core::convert::Infallible> {
@@ -29,6 +30,14 @@ fn main() -> Result<(), core::convert::Infallible> {
 
     // counter for incrementing thingy
     let mut popup_state = PopupState::default();
+    let mut smartstates = SmartstateProvider::<20>::new();
+
+    // clear bg once
+    let mut ui = Ui::new_fullscreen(
+        &mut display,
+        kolibri_embedded_gui::style::medsize_light_rgb565_style(),
+    );
+    ui.clear_background().unwrap();
 
     println!("Hello World!");
 
@@ -63,8 +72,9 @@ fn main() -> Result<(), core::convert::Infallible> {
         }
 
         // clear UI background (for non-incremental redrawing framebuffered applications)
-        ui.clear_background().ok();
+        //ui.clear_background().ok();
         ui.begin_popup(&mut popup_state, &mut popup_buffer);
+        smartstates.restart_counter();
 
         last_down = mouse_down;
 
@@ -74,6 +84,7 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         if ComboBox::new()
             .selected_text(selected0)
+            .smartstate(smartstates.nxt())
             .show_ui(&mut ui, || {
                 ComboBox::new_contents(
                     &mut selected0,
@@ -89,6 +100,7 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         if ComboBox::new()
             .selected_text(selected1)
+            .smartstate(smartstates.nxt())
             .with_width(100)
             .show_ui(&mut ui, || {
                 ComboBox::new_contents(
@@ -101,13 +113,16 @@ fn main() -> Result<(), core::convert::Infallible> {
             println!("ComboBox changed to {}", selected1);
         }
         ui.new_row();
-        ui.add(Label::new("Label 1"));
-        ui.add(Label::new("Label 2"));
-        ui.add(Label::new("Long Label 3"));
-        ui.add(Label::new("Long Long Label 4"));
-        ui.add(Label::new("Long Long Long Label 5"));
+        ui.add(Label::new("Label 1").smartstate(smartstates.nxt()));
+        ui.add(Label::new("Label 2").smartstate(smartstates.nxt()));
+        ui.add(Label::new("Long Label 3").smartstate(smartstates.nxt()));
+        ui.add(Label::new("Long Long Label 4").smartstate(smartstates.nxt()));
+        ui.add(Label::new("Long Long Long Label 5").smartstate(smartstates.nxt()));
 
-        ui.end_popup();
+        ui.end_popup(|| {
+            println!("Popup handled");
+            smartstates.force_redraw_all();
+        });
         // === ACTUAL UI CODE ENDS HERE ===
 
         // simulator window update
