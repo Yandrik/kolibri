@@ -555,6 +555,7 @@ pub struct PopupState {
     col: u32,
     row: u32,
     bounds: Option<Rectangle>,
+    offset_y: i32,
 }
 
 /// Struct that manages the state and interaction of a popup widget.
@@ -689,6 +690,32 @@ where
     /// ```
     pub fn get_screen_width(&self) -> u32 {
         self.bounds.size.width + self.style.spacing.window_border_padding.width * 2
+    }
+
+    /// Returns the height of the screen
+    ///
+    /// This includes the UI's window border padding.
+    ///
+    /// ## Returns
+    ///
+    /// The screen width as a `u32`.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use embedded_graphics::geometry::Size;
+    /// # use embedded_graphics::pixelcolor::Rgb565;
+    /// # use embedded_graphics_simulator::{SimulatorDisplay, OutputSettingsBuilder, Window};
+    /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
+    /// # use kolibri_embedded_gui::ui::Ui;
+    /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
+    /// # let output_settings = OutputSettingsBuilder::new().build();
+    /// # let mut window = Window::new("Kolibri Example", &output_settings);
+    /// let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
+    /// let screen_height = ui.get_screen_height();
+    /// println!("Screen height: {}", screen_height);
+    /// ```
+    pub fn get_screen_height(&self) -> u32 {
+        self.bounds.size.height + self.style.spacing.window_border_padding.height * 2
     }
 
     /// Return the position of the placer.
@@ -2095,7 +2122,7 @@ where
     /// References [crate::combo_box::ComboBox] Example
     ///
     pub fn end_popup<F>(&mut self, popup_handled: F)
-    where 
+    where
         F: FnOnce(),
     {
         let Some(popup) = self.popup.as_mut() else {
@@ -2114,9 +2141,11 @@ where
 
         popup.interact = Interaction::None;
         if popup.state.stage == PopupStage::Show {
-            if let Some(framebuf) =
-                WidgetFramebuf::try_new(popup.buffer, bounds.size, bounds.top_left)
-            {
+            if let Some(framebuf) = WidgetFramebuf::try_new(
+                popup.buffer,
+                bounds.size,
+                bounds.top_left + Point::new(0, popup.state.offset_y),
+            ) {
                 framebuf.draw(self.painter.target).ok();
             }
         }
@@ -2145,8 +2174,20 @@ where
             && popup.state.col == self.placer.col
             && popup.state.row == self.placer.row
         {
-            popup.interact = self.interact;
-            self.interact = Interaction::None;
+            popup.interact = if let Some(mut pt) = self.interact.get_point() {
+                pt.y -= popup.state.offset_y;
+                let popup_interact = match self.interact {
+                    Interaction::Click(_) => Interaction::Click(pt),
+                    Interaction::Drag(_) => Interaction::Drag(pt),
+                    Interaction::Release(_) => Interaction::Release(pt),
+                    Interaction::Hover(_) => Interaction::Hover(pt),
+                    _ => Interaction::None,
+                };
+                self.interact = Interaction::None;
+                popup_interact
+            } else {
+                Interaction::None
+            };
             return true;
         }
 
@@ -2183,6 +2224,7 @@ where
             return Err(GuiError::DrawError(None));
         }
 
+        let screen_height = self.get_screen_height() as i32;
         let Some(popup) = self.popup.as_mut() else {
             return Err(GuiError::DrawError(Some("Popup layer not initialized")));
         };
@@ -2204,9 +2246,15 @@ where
             popup.state.stage = PopupStage::Drawing;
             popup_ui.begin_popup(popup.state, &mut []);
             popup_ui.clear_background()?;
-            let selected = popup_contents(&mut popup_ui);
+            let selected = popup_contents(&mut popup_ui); // Draw popup contents
             bounds.size.height = popup_ui.get_placer_top_left().y as u32
                 + popup_ui.style().spacing.window_border_padding.height;
+            popup.state.offset_y = if bounds.top_left.y + bounds.size.height as i32 > screen_height
+            {
+                screen_height - bounds.size.height as i32 - bounds.top_left.y
+            } else {
+                0
+            };
             if selected {
                 popup.state.stage = PopupStage::Handled;
             } else {

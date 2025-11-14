@@ -44,6 +44,7 @@ fn main() -> Result<(), core::convert::Infallible> {
     let mut checked = false;
     let mut selected0 = "Hello";
     let mut selected1 = "World";
+    let mut selected2 = "Cross the bounds";
 
     'outer: loop {
         let mut popup_buffer = [Rgb565::CSS_BLACK; 320 * 240];
@@ -118,6 +119,18 @@ fn main() -> Result<(), core::convert::Infallible> {
         ui.add(Label::new("Long Label 3").smartstate(smartstates.nxt()));
         ui.add(Label::new("Long Long Label 4").smartstate(smartstates.nxt()));
         ui.add(Label::new("Long Long Long Label 5").smartstate(smartstates.nxt()));
+        ui.new_row();
+
+        if ComboBox::new()
+            .selected_text(selected2)
+            .smartstate(smartstates.nxt())
+            .show_ui(&mut ui, || {
+                ComboBox::new_contents(&mut selected2, &["Item 1", "Item 2", "Item 3", "Item 4"])
+            })
+            .changed()
+        {
+            println!("ComboBox changed to {}", selected2);
+        }
 
         ui.end_popup(|| {
             println!("Popup handled");
