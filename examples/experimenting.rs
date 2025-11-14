@@ -74,11 +74,11 @@ fn main() -> Result<(), core::convert::Infallible> {
             .clicked()
         {
             i = i.saturating_add(1);
-            println!("Clicked! i: {}", i);
+            println!("Clicked! i: {i}");
             // smartstates.peek().force_redraw();
         }
         ui.add_horizontal(HashLabel::new(
-            format!("Clicked {} times", i).as_ref(),
+            format!("Clicked {i} times").as_ref(),
             smartstates.nxt(),
             &hasher,
         ));
@@ -105,7 +105,7 @@ fn main() -> Result<(), core::convert::Infallible> {
             )
             .changed()
         {
-            println!("Slider value: {}", slider_val);
+            println!("Slider value: {slider_val}");
         }
 
         ui.add(ToggleButton::new("Something", &mut state).smartstate(smartstates.nxt()));

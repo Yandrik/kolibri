@@ -71,7 +71,7 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         let text_smartstate = smartstates.get_pos();
         ui.add_and_clear_col_remainder(
-            Label::new(format!("Text: {}", text).as_ref()).smartstate(smartstates.nxt()),
+            Label::new(format!("Text: {text}").as_ref()).smartstate(smartstates.nxt()),
             last_len > text.len(),
         );
         last_len = text.len();
@@ -123,7 +123,7 @@ fn main() -> Result<(), core::convert::Infallible> {
             )
             .changed()
             {
-                println!("Text: {}", text);
+                println!("Text: {text}");
                 smartstates.get(text_smartstate).force_redraw();
             };
             Ok(())
