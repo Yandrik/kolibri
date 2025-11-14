@@ -45,6 +45,7 @@ pub struct ComboBoxContents<'a> {
 /// # use embedded_graphics::prelude::{Point, WebColors};
 /// # use embedded_graphics_simulator::sdl2::MouseButton;
 /// # use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window,};
+/// # use kolibri_embedded_gui::style::medsize_rgb565_style;
 /// # use kolibri_embedded_gui::combo_box::ComboBox;
 /// # use kolibri_embedded_gui::ui::{Interaction, PopupState, Ui};
 /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
@@ -72,7 +73,9 @@ pub struct ComboBoxContents<'a> {
 ///         println!("ComboBox changed to {}", selected);
 ///     }
 ///     
-///     ui.end_popup();
+///     ui.end_popup(|| {
+///         println!("Popup handled");
+///     });
 /// }
 /// ```
 pub struct ComboBox<'a> {

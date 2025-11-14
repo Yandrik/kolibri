@@ -707,7 +707,7 @@ where
     /// # let output_settings = OutputSettingsBuilder::new().build();
     /// # let mut window = Window::new("Kolibri Example", &output_settings);
     /// let mut ui = Ui::new_fullscreen(&mut display, medsize_rgb565_style());
-    /// let pos = ui.get_pos();
+    /// let pos = ui.get_placer_top_left();
     /// println!("Placer position: {}", pos);
     /// ```
     pub fn get_placer_top_left(&self) -> Point {
