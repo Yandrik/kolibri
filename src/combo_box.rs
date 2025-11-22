@@ -27,11 +27,6 @@ use embedded_graphics::text::{Baseline, Text};
 use embedded_iconoir::prelude::*;
 use embedded_iconoir::{size12px, size18px, size24px, size32px};
 
-pub struct ComboBoxContents<'a> {
-    selected_text: &'a mut &'static str,
-    contents: &'a [&'static str],
-}
-
 /// A combo box widget for selecting from a list of options.
 ///
 /// The combo box displays the currently selected text and provides a dropdown menu
@@ -62,12 +57,12 @@ pub struct ComboBoxContents<'a> {
 ///     
 ///     ui.begin_popup(&mut popup_state, &mut popup_buffer);
 ///     
-///     if ComboBox::new()
-///         .selected_text(selected)
-///         .with_width(100)
-///         .show_ui(&mut ui, || {
-///             ComboBox::new_contents(&mut selected, &["Item 1", "Item 2", "Item 3",])
-///         })
+///     if ui.add(ComboBox::new(
+///                 &mut selected,
+///                 &["Item 1", "Item 2", "Item 3"],
+///             )
+///             .with_width(100)
+///         )
 ///         .changed()
 ///     {
 ///         println!("ComboBox changed to {}", selected);
@@ -78,7 +73,12 @@ pub struct ComboBoxContents<'a> {
 ///     });
 /// }
 /// ```
-pub struct ComboBox<'a, 'b, 'c> where 'b: 'a, 'c: 'a, 'c: 'b {
+pub struct ComboBox<'a, 'b, 'c>
+where
+    'b: 'a,
+    'c: 'a,
+    'c: 'b,
+{
     selected_text: &'a mut &'b str,
     smartstate: Container<'a, Smartstate>,
     corner_radius: Option<u32>,
@@ -86,11 +86,13 @@ pub struct ComboBox<'a, 'b, 'c> where 'b: 'a, 'c: 'a, 'c: 'b {
     contents: &'a [&'c str],
 }
 
-impl<'a, 'b, 'c> ComboBox<'a, 'b, 'c> where 'b: 'a, 'c: 'a, 'c: 'b {
-    pub fn new(
-        selected_text: &'a mut &'b str,
-        contents: &'a [&'c str],
-    ) -> ComboBox<'a, 'b, 'c> {
+impl<'a, 'b, 'c> ComboBox<'a, 'b, 'c>
+where
+    'b: 'a,
+    'c: 'a,
+    'c: 'b,
+{
+    pub fn new(selected_text: &'a mut &'b str, contents: &'a [&'c str]) -> ComboBox<'a, 'b, 'c> {
         ComboBox {
             selected_text,
             smartstate: Container::empty(),
@@ -99,36 +101,6 @@ impl<'a, 'b, 'c> ComboBox<'a, 'b, 'c> where 'b: 'a, 'c: 'a, 'c: 'b {
             contents,
         }
     }
-
-    /// Creates a new ComboBoxContents instance.
-    ///
-    /// # Arguments
-    /// * `selected_text` - A mutable reference to the selected text
-    /// * `contents` - A slice of strings representing the available options
-    ///
-    /// # Returns
-    /// A new ComboBoxContents instance
-    pub fn new_contents(
-        selected_text: &'a mut &'static str,
-        contents: &'a [&'static str],
-    ) -> ComboBoxContents<'a> {
-        ComboBoxContents {
-            selected_text,
-            contents,
-        }
-    }
-
-    /// Sets the selected text for the combo box.
-    ///
-    /// # Arguments
-    /// * `selected_text` - The text to display as the selected item
-    ///
-    /// # Returns
-    /// Self with the specified selected text
-    // pub fn selected_text(mut self, selected_text: &'a str) -> Self {
-        // self.selected_text = selected_text;
-        // self
-    // }
 
     /// Sets the width of the combo box.
     ///
@@ -141,61 +113,6 @@ impl<'a, 'b, 'c> ComboBox<'a, 'b, 'c> where 'b: 'a, 'c: 'a, 'c: 'b {
         self.width = width;
         self
     }
-
-    /// Displays the combo box with the given menu contents.
-    ///
-    /// # Arguments
-    /// * `ui` - The UI instance to use for drawing
-    /// * `menu_contents` - A closure that returns the menu contents to display
-    ///
-    /// # Returns
-    /// Self with the popup ID set if successful
-    /* 
-    pub fn show_ui<DRAW: DrawTarget<Color = COL>, COL: PixelColor>(
-        mut self,
-        ui: &mut Ui<DRAW, COL>,
-    ) -> Response {
-        let style = ui.style();
-        let window_border_padding = style.spacing.window_border_padding.width as i32;
-        let size = self.get_size(self.selected_text, &style);
-        let mut top_left = ui.get_placer_top_left().add(Point::new(
-            window_border_padding,
-            window_border_padding + size.height as i32,
-        ));
-        if top_left.x + size.width as i32 > ui.get_width() as i32 {
-            top_left.x = window_border_padding;
-            top_left.y += size.height as i32;
-        }
-        let mut resp = ui.add_horizontal(self);
-        if resp.clicked() || ui.popup_check() {
-            let changed = ui
-                .popup_draw(top_left, size.width as u16, |popup_ui| {
-                    let style = popup_ui.style_mut();
-                    style.spacing.item_spacing.height = 0;
-                    style.spacing.button_padding.width = 0;
-                    style.border_width = 0;
-                    style.corner_radius = 0;
-                    let item_width =
-                        (size.width - 2 * style.spacing.window_border_padding.width) as u16;
-                    let mut selected = false;
-                    for &item in self.contents {
-                        if popup_ui
-                            .add(Button::new(item).with_width(item_width))
-                            .clicked()
-                        {
-                            *self.selected_text = item;
-                            selected = true;
-                        }
-                    }
-                    selected
-                })
-                .unwrap_or(false);
-
-            resp = resp.set_changed(changed);
-        }
-        resp
-    }
-*/
 
     /// Adds smartstate support to the combo box for incremental redrawing.
     ///
