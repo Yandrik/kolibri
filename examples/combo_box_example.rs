@@ -83,36 +83,39 @@ fn main() -> Result<(), core::convert::Infallible> {
 
         ui.add(Label::new("ComboBox Example").with_font(ascii::FONT_10X20));
 
-        if ComboBox::new()
-            .selected_text(selected0)
-            .smartstate(smartstates.nxt())
-            .show_ui(&mut ui, || {
-                ComboBox::new_contents(
-                    &mut selected0,
-                    &["Hello 1", "Hello Hello 2", "Hello Hello Hello 3"],
-                )
-            })
-            .changed()
-        {
-            println!("ComboBox changed to {}", selected0);
-        }
+        // if ComboBox::new()
+        //     .selected_text(selected0)
+        //     .smartstate(smartstates.nxt())
+        //     .show_ui(&mut ui, || {
+        //         ComboBox::new_contents(
+        //             &mut selected0,
+        //             &["Hello 1", "Hello Hello 2", "Hello Hello Hello 3"],
+        //         )
+        //     })
+        //     .changed()
+        // {
+        //     println!("ComboBox changed to {}", selected0);
+        // }
 
         ui.add_horizontal(Checkbox::new(&mut checked));
 
-        if ComboBox::new()
-            .selected_text(selected1)
-            .smartstate(smartstates.nxt())
-            .with_width(100)
-            .show_ui(&mut ui, || {
+        /* 
+        if ui.add(ComboBox::new(
+& || {
                 ComboBox::new_contents(
                     &mut selected1,
                     &["World 1", "World World 2", "World World World 3"],
                 )
-            })
+            },
+        )
+        .selected_text(selected1)
+            .smartstate(smartstates.nxt())
+            .with_width(100))
             .changed()
+            
         {
             println!("ComboBox changed to {}", selected1);
-        }
+        }*/
         ui.new_row();
         ui.add(Label::new("Label 1").smartstate(smartstates.nxt()));
         ui.add(Label::new("Label 2").smartstate(smartstates.nxt()));
@@ -121,12 +124,12 @@ fn main() -> Result<(), core::convert::Infallible> {
         ui.add(Label::new("Long Long Long Label 5").smartstate(smartstates.nxt()));
         ui.new_row();
 
-        if ComboBox::new()
-            .selected_text(selected2)
-            .smartstate(smartstates.nxt())
-            .show_ui(&mut ui, || {
-                ComboBox::new_contents(&mut selected2, &["Item 1", "Item 2", "Item 3", "Item 4"])
-            })
+        if ui.add(ComboBox::new(
+            &mut selected0,
+            &["Cross 1", "the the 2", "bounds bounds bounds 3"],
+
+        )
+            .smartstate(smartstates.nxt()))
             .changed()
         {
             println!("ComboBox changed to {}", selected2);
