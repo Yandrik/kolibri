@@ -1289,7 +1289,7 @@ where
                         return false;
                     }
                 }
-                return area.contains(pt);
+                area.contains(pt)
             })
             .unwrap_or(false)
         {
@@ -2191,7 +2191,7 @@ where
             return true;
         }
 
-        return false;
+        false
     }
 
     /// Draws the popup layer with the specified contents.

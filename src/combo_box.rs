@@ -181,7 +181,7 @@ where
             text_size.width + 2 * padding.width + 2 * border + height + item_spacing_width
         };
 
-        return Size::new(width, height);
+        Size::new(width, height)
     }
 }
 
@@ -234,7 +234,7 @@ impl Widget for ComboBox<'_, '_, '_> {
                 }
             }
         };
-        let size = self.get_size(selected_text, &style);
+        let size = self.get_size(selected_text, style);
         let mut top_left = ui.get_placer_top_left().add(Point::new(
             window_border_padding,
             window_border_padding + size.height as i32,
