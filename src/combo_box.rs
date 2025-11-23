@@ -27,6 +27,14 @@ use embedded_graphics::text::{Baseline, Text};
 use embedded_iconoir::prelude::*;
 use embedded_iconoir::{size12px, size18px, size24px, size32px};
 
+/// Selector for the combo box widget.
+///
+/// This enum allows the combo box to select either a text or an index.
+pub enum Selector<'a, 'b> {
+    Text(&'a mut &'b str),
+    Index(&'a mut usize),
+}
+
 /// A combo box widget for selecting from a list of options.
 ///
 /// The combo box displays the currently selected text and provides a dropdown menu
@@ -41,7 +49,7 @@ use embedded_iconoir::{size12px, size18px, size24px, size32px};
 /// # use embedded_graphics_simulator::sdl2::MouseButton;
 /// # use embedded_graphics_simulator::{OutputSettingsBuilder, SimulatorDisplay, Window,};
 /// # use kolibri_embedded_gui::style::medsize_rgb565_style;
-/// # use kolibri_embedded_gui::combo_box::ComboBox;
+/// # use kolibri_embedded_gui::combo_box::{Selector, ComboBox};
 /// # use kolibri_embedded_gui::ui::{Interaction, PopupState, Ui};
 /// # let mut display = SimulatorDisplay::<Rgb565>::new(Size::new(320, 240));
 /// # let output_settings = OutputSettingsBuilder::new().build();
@@ -58,7 +66,7 @@ use embedded_iconoir::{size12px, size18px, size24px, size32px};
 ///     ui.begin_popup(&mut popup_state, &mut popup_buffer);
 ///     
 ///     if ui.add(ComboBox::new(
-///                 &mut selected,
+///                 Selector::Text(&mut selected),
 ///                 &["Item 1", "Item 2", "Item 3"],
 ///             )
 ///             .with_width(100)
@@ -79,7 +87,7 @@ where
     'c: 'a,
     'c: 'b,
 {
-    selected_text: &'a mut &'b str,
+    selected: Selector<'a, 'b>,
     smartstate: Container<'a, Smartstate>,
     corner_radius: Option<u32>,
     width: u16,
@@ -92,9 +100,9 @@ where
     'c: 'a,
     'c: 'b,
 {
-    pub fn new(selected_text: &'a mut &'b str, contents: &'a [&'c str]) -> ComboBox<'a, 'b, 'c> {
+    pub fn new(selected: Selector<'a, 'b>, contents: &'a [&'c str]) -> ComboBox<'a, 'b, 'c> {
         ComboBox {
-            selected_text,
+            selected,
             smartstate: Container::empty(),
             corner_radius: None,
             width: 0,
@@ -216,7 +224,17 @@ impl Widget for ComboBox<'_, '_, '_> {
         let min_width = 2 * padding.width + 2 * border + side_lenght + item_spacing_width;
 
         let window_border_padding = style.spacing.window_border_padding.width as i32;
-        let size = self.get_size(self.selected_text, &style);
+        let selected_text = match &self.selected {
+            Selector::Text(p_txt) => **p_txt,
+            Selector::Index(p_idx) => {
+                if **p_idx < self.contents.len() {
+                    self.contents[**p_idx]
+                } else {
+                    ""
+                }
+            }
+        };
+        let size = self.get_size(selected_text, &style);
         let mut top_left = ui.get_placer_top_left().add(Point::new(
             window_border_padding,
             window_border_padding + size.height as i32,
@@ -226,18 +244,18 @@ impl Widget for ComboBox<'_, '_, '_> {
             top_left.y += size.height as i32;
         }
 
-        let selected_text = if self.width > 0 {
+        let current_text = if self.width > 0 {
             if self.width > min_width as u16 {
                 let text_width = self.width as u32 - min_width;
 
-                crate::style::slice_text_by_width(text_width, self.selected_text, style)
+                crate::style::slice_text_by_width(text_width, selected_text, style)
             } else {
                 ""
             }
         } else {
-            *self.selected_text
+            selected_text
         };
-        let cb_size = self.get_size(selected_text, style);
+        let cb_size = self.get_size(current_text, style);
 
         let iresponse = ui.allocate_space(cb_size)?;
 
@@ -286,7 +304,7 @@ impl Widget for ComboBox<'_, '_, '_> {
             let font = ui.style().default_font;
 
             let mut text = Text::new(
-                selected_text,
+                current_text,
                 Point::new(0, 0),
                 MonoTextStyle::new(&font, ui.style().text_color),
             );
@@ -367,12 +385,15 @@ impl Widget for ComboBox<'_, '_, '_> {
                     let item_width =
                         (size.width - 2 * style.spacing.window_border_padding.width) as u16;
                     let mut selected = false;
-                    for &item in self.contents {
+                    for (idx, item) in self.contents.iter().enumerate() {
                         if popup_ui
                             .add(Button::new(item).with_width(item_width))
                             .clicked()
                         {
-                            *self.selected_text = item;
+                            match &mut self.selected {
+                                Selector::Text(p_txt) => **p_txt = *item,
+                                Selector::Index(p_idx) => **p_idx = idx,
+                            }
                             selected = true;
                         }
                     }

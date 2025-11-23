@@ -7,7 +7,7 @@ use embedded_graphics_simulator::{
     OutputSettingsBuilder, SimulatorDisplay, SimulatorEvent, Window,
 };
 use kolibri_embedded_gui::checkbox::Checkbox;
-use kolibri_embedded_gui::combo_box::ComboBox;
+use kolibri_embedded_gui::combo_box::{ComboBox, Selector};
 use kolibri_embedded_gui::label::Label;
 use kolibri_embedded_gui::smartstate::SmartstateProvider;
 use kolibri_embedded_gui::ui::{Interaction, PopupState, Ui};
@@ -43,7 +43,7 @@ fn main() -> Result<(), core::convert::Infallible> {
 
     let mut checked = false;
     let mut selected0 = "Hello";
-    let mut selected1 = "World";
+    let mut selected1 = 0;
     let mut selected2 = "Cross the bounds";
 
     'outer: loop {
@@ -86,7 +86,7 @@ fn main() -> Result<(), core::convert::Infallible> {
         if ui
             .add_horizontal(
                 ComboBox::new(
-                    &mut selected0,
+                    Selector::Text(&mut selected0),
                     &["Hello 1", "Hello Hello 2", "Hello Hello Hello 3"],
                 )
                 .smartstate(smartstates.nxt()),
@@ -101,7 +101,7 @@ fn main() -> Result<(), core::convert::Infallible> {
         if ui
             .add(
                 ComboBox::new(
-                    &mut selected1,
+                    Selector::Index(&mut selected1),
                     &["World 1", "World World 2", "World World World 3"],
                 )
                 .smartstate(smartstates.nxt())
@@ -123,7 +123,7 @@ fn main() -> Result<(), core::convert::Infallible> {
         if ui
             .add(
                 ComboBox::new(
-                    &mut selected2,
+                    Selector::Text(&mut selected2),
                     &["Cross 1", "the the 2", "bounds bounds bounds 3"],
                 )
                 .smartstate(smartstates.nxt()),
